@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { parseISO, isAfter } from 'date-fns';
 import { ClipboardList, Search, XCircle, CalendarDays, Clock, MapPin, Award } from 'lucide-react';
 import { useAppStore, useCurrentStudent } from '@/hooks/useAppStore';
@@ -16,15 +16,24 @@ import { useToast } from '@/hooks/use-toast';
 import { REG_STATUS_LABELS, REG_STATUS_VARIANTS, ATT_STATUS_LABELS, ATT_STATUS_VARIANTS, SHIFT_LABELS } from '@/lib/constants';
 import { formatDate, formatDateTime } from '@/lib/format';
 import type { Registration } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const TABS = ['all', 'pending', 'approved', 'waitlist', 'completed', 'cancelled', 'absent'] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = { all: 'Tất cả', pending: 'Chờ duyệt', approved: 'Đã duyệt', waitlist: 'Danh sách chờ', completed: 'Đã hoàn thành', cancelled: 'Đã hủy', absent: 'Vắng mặt' };
 
 export default function MyRegistrationsPage() {
-  const { registrations, events, updateRegistration, addNotification } = useAppStore();
+  const { registrations, events, updateRegistration, addNotification, fetchRegistrations, fetchEvents } = useAppStore();
   const student = useCurrentStudent();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(registrations.length === 0);
+
+  useEffect(() => {
+    Promise.all([
+      fetchRegistrations(),
+      fetchEvents()
+    ]).finally(() => setLoading(false));
+  }, [fetchRegistrations, fetchEvents]);
   const [tab, setTab] = useState<Tab>('all'); const [search, setSearch] = useState(''); const [statusFilter, setStatusFilter] = useState('all');
   const [cancelTarget, setCancelTarget] = useState<Registration | null>(null);
   const myRegs = useMemo(() => registrations.filter((r) => r.studentId === student?.id), [registrations, student]);
@@ -32,6 +41,16 @@ export default function MyRegistrationsPage() {
   const counts: Record<string, number> = { all: myRegs.length }; for (const t of TABS) if (t !== 'all') counts[t] = myRegs.filter((r) => r.status === t).length;
   const canCancel = (reg: Registration) => { if (['cancelled', 'completed', 'absent'].includes(reg.status)) return false; const ev = events.find((e) => e.id === reg.eventId); return ev ? isAfter(parseISO(ev.cancellationDeadline), new Date()) : false; };
   async function handleCancel() { if (!cancelTarget) return; const ev = events.find((e) => e.id === cancelTarget.eventId); await updateRegistration(cancelTarget.id, { status: 'cancelled' }); addNotification({ userId: student?.userId ?? '', type: 'registration', title: 'Đã hủy đăng ký', message: `Đã hủy "${ev?.name ?? 'sự kiện'}".`, link: '/student/my-registrations' }); toast({ title: 'Đã hủy đăng ký' }); setCancelTarget(null); }
+  if (loading) {
+    return <div className="space-y-6">
+      <PageHeader title="Đăng ký của tôi" description="Theo dõi các đăng ký ngày công" />
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <Card key={i}><CardContent className="p-5 space-y-3"><Skeleton className="h-6 w-1/4" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-1/2" /></CardContent></Card>
+        ))}
+      </div>
+    </div>;
+  }
   return <div className="space-y-6">
     <PageHeader title="Đăng ký của tôi" description="Theo dõi các đăng ký ngày công" />
     <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>

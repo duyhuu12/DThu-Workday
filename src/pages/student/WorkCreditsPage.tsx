@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Award, Search, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { useAppStore, useCurrentStudent } from '@/hooks/useAppStore';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -14,10 +14,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CREDIT_STATUS_LABELS, CREDIT_STATUS_VARIANTS, SEMESTERS } from '@/lib/constants';
 import { formatDate } from '@/lib/format';
 import type { WorkCredit } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function WorkCreditsPage() {
-  const { credits, settings } = useAppStore();
+  const { credits, settings, fetchCredits } = useAppStore();
   const student = useCurrentStudent();
+  const [loading, setLoading] = useState(credits.length === 0);
+
+  useEffect(() => {
+    fetchCredits().finally(() => setLoading(false));
+  }, [fetchCredits]);
+
   const [search, setSearch] = useState(''); const [status, setStatus] = useState('all'); const [semester, setSemester] = useState('all');
   const myCredits = useMemo(() => credits.filter((c) => c.studentId === student?.id), [credits, student]);
   const filtered = myCredits.filter((c) => { if (status !== 'all' && c.status !== status) return false; if (semester !== 'all' && c.semester !== semester) return false; if (search) { const q = search.toLowerCase(); if (!c.eventName.toLowerCase().includes(q) && !c.studentName.toLowerCase().includes(q)) return false; } return true; });
@@ -31,6 +38,17 @@ export default function WorkCreditsPage() {
     { key: 'creditValue', header: 'Ngày công', sortable: true, sortValue: (c) => c.creditValue, render: (c) => <span className="font-medium text-secondary">{c.creditValue}</span> },
     { key: 'adjustedAt', header: 'Duyệt lúc', render: (c) => <span className="text-muted-foreground">{c.adjustedAt ? formatDate(c.adjustedAt) : '—'}</span> },
   ];
+  if (loading) {
+    return <div className="space-y-6">
+      <PageHeader title="Ngày công của tôi" description="Tổng hợp ngày công lao động" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[1, 2, 3].map(i => (
+          <Card key={i}><CardContent className="p-6 flex items-center justify-between"><div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-8 w-12" /></div><Skeleton className="h-10 w-10 rounded-full" /></CardContent></Card>
+        ))}
+      </div>
+      <Card><CardContent className="p-5 space-y-3"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-full" /><Skeleton className="h-2 w-full" /></CardContent></Card>
+    </div>;
+  }
   return <div className="space-y-6">
     <PageHeader title="Ngày công của tôi" description="Tổng hợp ngày công lao động" />
     <div className="grid gap-4 sm:grid-cols-3"><StatCard title="Đã được duyệt" value={totalEarned} suffix="ngày" icon={CheckCircle2} iconClassName="bg-success/10 text-success" /><StatCard title="Chờ duyệt" value={totalPending} suffix="ngày" icon={Award} iconClassName="bg-warning/10 text-warning" /><StatCard title="Yêu cầu học kỳ" value={required} suffix="ngày" icon={TrendingUp} iconClassName="bg-primary/10 text-primary" /></div>

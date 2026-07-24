@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { CalendarDays, Clock, MapPin, Users, Search, LayoutGrid, Table as TableIcon, X } from 'lucide-react';
 import { useAppStore } from '@/hooks/useAppStore';
@@ -16,11 +16,28 @@ import type { WorkEvent } from '@/types';
 import { EVENT_STATUS_LABELS, EVENT_STATUS_VARIANTS, SHIFT_LABELS } from '@/lib/constants';
 import { formatDate, formatDateTime } from '@/lib/format';
 
+import { Skeleton } from '@/components/ui/skeleton';
+
+import { useSearchParams } from 'next/navigation';
+
 export default function WorkEventsPage() {
-  const { events, faculties } = useAppStore();
-  const [search, setSearch] = useState(''); const [status, setStatus] = useState('all');
+  const { events, faculties, fetchEvents } = useAppStore();
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams ? searchParams.get('search') || '' : '';
+  const [loading, setLoading] = useState(events.length === 0);
+  const [search, setSearch] = useState(urlSearch);
+  const [status, setStatus] = useState('all');
   const [faculty, setFaculty] = useState('all'); const [shift, setShift] = useState('all');
   const [avail, setAvail] = useState('all'); const [view, setView] = useState<'card' | 'table'>('card');
+
+  useEffect(() => {
+    fetchEvents().finally(() => setLoading(false));
+  }, [fetchEvents]);
+
+  useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
+
   const filtered = useMemo(() => events.filter((e) => {
     if (search) { const q = search.toLowerCase(); if (!e.name.toLowerCase().includes(q) && !e.location.toLowerCase().includes(q)) return false; }
     if (status !== 'all' && e.status !== status) return false;
@@ -42,6 +59,30 @@ export default function WorkEventsPage() {
     { key: 'status', header: 'Trạng thái', render: (e) => <StatusBadge label={EVENT_STATUS_LABELS[e.status]} variant={EVENT_STATUS_VARIANTS[e.status]} /> },
     { key: 'action', header: '', render: (e) => <Button asChild size="sm" variant="outline"><Link href={`/student/work-events/${e.id}`}>Chi tiết</Link></Button> },
   ];
+  if (loading) {
+    return <div className="space-y-6">
+      <PageHeader title="Sự kiện ngày công" description="Tìm kiếm và đăng ký các sự kiện" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i}>
+            <CardContent className="space-y-4 p-5">
+              <Skeleton className="h-6 w-3/4" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+              <Skeleton className="h-1.5 w-full" />
+              <div className="flex justify-between">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>;
+  }
   return <div className="space-y-6">
     <PageHeader title="Sự kiện ngày công" description="Tìm kiếm và đăng ký các sự kiện" />
     <Card><CardContent className="space-y-4 p-4">

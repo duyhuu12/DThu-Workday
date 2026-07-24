@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -20,16 +19,348 @@ enum AccountStatus {
   INACTIVE
 }
 
+enum WorkShift {
+  MORNING
+  AFTERNOON
+  EVENING
+  FULLDAY
+}
+
+enum EventStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  OPEN
+  ONGOING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  WAITLIST
+  COMPLETED
+  CANCELLED
+  ABSENT
+}
+
+enum AttendanceStatus {
+  NOT_CHECKED
+  CHECKED_IN
+  CHECKED_OUT
+  LATE
+  EARLY_LEAVE
+  ABSENT
+}
+
+enum CreditStatus {
+  PENDING
+  RECORDED
+  REJECTED
+  ADJUSTED
+}
+
+enum ComplaintType {
+  CREDIT
+  ATTENDANCE
+  SCHEDULE
+  ORGANIZER
+  OTHER
+}
+
+enum ComplaintStatus {
+  SUBMITTED
+  PROCESSING
+  RESOLVED
+  REJECTED
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  REGISTRATION
+  EVENT
+  CREDIT
+  COMPLAINT
+  SYSTEM
+}
+
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique @db.VarChar(150)
-  passwordHash String        @map("password_hash") @db.VarChar(255)
-  fullName     String        @map("full_name") @db.VarChar(150)
-  role         UserRole      @default(STUDENT)
-  status       AccountStatus @default(ACTIVE)
-  lastLoginAt  DateTime?     @map("last_login_at")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id              Int             @id @default(autoincrement())
+  email           String          @unique @db.VarChar(150)
+  passwordHash    String          @map("password_hash") @db.VarChar(255)
+  fullName        String          @map("full_name") @db.VarChar(150)
+  role            UserRole        @default(STUDENT)
+  status          AccountStatus   @default(ACTIVE)
+  phone           String?         @db.VarChar(20)
+  lastLoginAt     DateTime?       @map("last_login_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  student         Student?
+  activityLogs    ActivityLog[]
+  notifications   Notification[]
+  eventsManaged   WorkEvent[]     @relation("OrganizerEvents")
+  adjustedCredits WorkCredit[]    @relation("AdjustedCredits")
 
   @@map("users")
+}
+
+model Faculty {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(150)
+  code      String    @unique @db.VarChar(50)
+  classes   Class[]
+  students  Student[]
+
+  @@map("faculties")
+}
+
+model Class {
+  id         Int       @id @default(autoincrement())
+  name       String    @db.VarChar(100)
+  code       String    @unique @db.VarChar(50)
+  facultyId  Int       @map("faculty_id")
+  schoolYear String    @map("school_year") @db.VarChar(20)
+
+  faculty    Faculty   @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  students   Student[]
+
+  @@index([facultyId])
+  @@map("classes")
+}
+
+model Student {
+  id                  Int           @id @default(autoincrement())
+  userId              Int           @unique @map("user_id")
+  studentCode         String        @unique @map("student_code") @db.VarChar(50)
+  fullName            String        @map("full_name") @db.VarChar(150)
+  email               String        @unique @db.VarChar(150)
+  phone               String?       @db.VarChar(20)
+  facultyId           Int           @map("faculty_id")
+  classId             Int           @map("class_id")
+  schoolYear          String        @map("school_year") @db.VarChar(20)
+  gender              String        @db.VarChar(10)
+  birthDate           DateTime?     @map("birth_date")
+  hometown            String?       @db.VarChar(150)
+  status              AccountStatus @default(ACTIVE)
+  requiredWorkdays    Int           @default(12) @map("required_workdays")
+  accumulatedWorkdays Float         @default(0.0) @map("accumulated_workdays")
+  completedWorkdays   Float         @default(0.0) @map("completed_workdays")
+
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  faculty             Faculty       @relation(fields: [facultyId], references: [id])
+  class               Class         @relation(fields: [classId], references: [id])
+  registrations       Registration[]
+  attendances         Attendance[]
+  workCredits         WorkCredit[]
+  complaints          Complaint[]
+
+  @@index([classId])
+  @@index([facultyId])
+  @@map("students")
+}
+
+model WorkEvent {
+  id                   Int           @id @default(autoincrement())
+  code                 String        @unique @db.VarChar(50)
+  name                 String        @db.VarChar(255)
+  description          String        @db.Text
+  workContent          String        @map("work_content") @db.Text
+  location             String        @db.VarChar(255)
+  date                 DateTime      @db.Date
+  startTime            String        @map("start_time") @db.VarChar(10)
+  endTime              String        @map("end_time") @db.VarChar(10)
+  shift                WorkShift     @default(MORNING)
+  registrationOpen     DateTime      @map("registration_open")
+  registrationClose    DateTime      @map("registration_close")
+  cancellationDeadline DateTime      @map("cancellation_deadline")
+  maxCapacity          Int           @map("max_capacity")
+  registeredCount      Int           @default(0) @map("registered_count")
+  workdayCredit        Float         @default(1.0) @map("workday_credit")
+  clothingRequirements String?       @map("clothing_requirements") @db.Text
+  equipmentRequirements String?      @map("equipment_requirements") @db.Text
+  contactPerson        String        @map("contact_person") @db.VarChar(100)
+  contactPhone         String        @map("contact_phone") @db.VarChar(20)
+  organizerId          Int           @map("organizer_id")
+  status               EventStatus   @default(DRAFT)
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  eligibleFacultyIds   String?       @map("eligible_faculty_ids") @db.Text
+  eligibleClassIds     String?       @map("eligible_class_ids") @db.Text
+  eligibleSchoolYears  String?       @map("eligible_school_years") @db.Text
+
+  organizer            User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  registrations        Registration[]
+  attendances          Attendance[]
+  workCredits          WorkCredit[]
+  complaints           Complaint[]
+
+  @@index([organizerId])
+  @@index([date])
+  @@map("work_events")
+}
+
+model Registration {
+  id               Int                @id @default(autoincrement())
+  eventId          Int                @map("event_id")
+  studentId        Int                @map("student_id")
+  status           RegistrationStatus @default(PENDING)
+  registeredAt     DateTime           @default(now()) @map("registered_at")
+  approvedAt       DateTime?          @map("approved_at")
+  approvedById     Int?               @map("approved_by_id")
+  rejectionReason  String?            @map("rejection_reason") @db.Text
+  notes            String?            @db.Text
+
+  event            WorkEvent          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student          Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, studentId])
+  @@index([studentId])
+  @@map("registrations")
+}
+
+model Attendance {
+  id           Int              @id @default(autoincrement())
+  eventId      Int              @map("event_id")
+  studentId    Int              @map("student_id")
+  status       AttendanceStatus @default(NOT_CHECKED)
+  checkInTime  String?          @map("check_in_time") @db.VarChar(10)
+  checkOutTime String?          @map("check_out_time") @db.VarChar(10)
+  notes        String?          @db.Text
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  event        WorkEvent        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student          Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, studentId])
+  @@index([studentId])
+  @@map("attendances")
+}
+
+model WorkCredit {
+  id                Int          @id @default(autoincrement())
+  studentId         Int          @map("student_id")
+  eventId           Int          @map("event_id")
+  semesterId        Int          @map("semester_id")
+  creditValue       Float        @map("credit_value")
+  status            CreditStatus @default(PENDING)
+  notes             String?      @db.Text
+  adjustedById      Int?         @map("adjusted_by_id")
+  adjustmentReason  String?      @map("adjustment_reason") @db.Text
+  adjustedAt        DateTime?    @map("adjusted_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  student           Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  event             WorkEvent    @relation(fields: [eventId], references: [id])
+  semester          SemesterConfig @relation(fields: [semesterId], references: [id])
+  adjustedBy        User?        @relation("AdjustedCredits", fields: [adjustedById], references: [id])
+
+  @@unique([studentId, eventId])
+  @@index([eventId])
+  @@index([semesterId])
+  @@map("work_credits")
+}
+
+model Complaint {
+  id          Int             @id @default(autoincrement())
+  code        String          @unique @db.VarChar(50)
+  studentId   Int             @map("student_id")
+  eventId     Int?            @map("event_id")
+  type        ComplaintType   @default(OTHER)
+  priority    ComplaintPriority @default(MEDIUM)
+  title       String          @db.VarChar(255)
+  description String          @db.Text
+  evidence    String?         @db.Text
+  status      ComplaintStatus @default(SUBMITTED)
+  response    String?         @db.Text
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  student     Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  event       WorkEvent?      @relation(fields: [eventId], references: [id])
+  timeline    ComplaintTimeline[]
+
+  @@index([studentId])
+  @@index([eventId])
+  @@map("complaints")
+}
+
+model ComplaintTimeline {
+  id          Int             @id @default(autoincrement())
+  complaintId Int             @map("complaint_id")
+  status      ComplaintStatus
+  note        String          @db.Text
+  actor       String          @db.VarChar(150)
+  timestamp   DateTime        @default(now())
+
+  complaint   Complaint       @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+  @@map("complaint_timelines")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  type      NotificationType @default(SYSTEM)
+  title     String           @db.VarChar(255)
+  message   String           @db.Text
+  isRead    Boolean          @default(false) @map("is_read")
+  link      String?          @db.VarChar(255)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  action       String   @db.VarChar(150)
+  affectedItem String   @map("affected_item") @db.VarChar(255)
+  oldValue     String?  @map("old_value") @db.Text
+  newValue     String?  @map("new_value") @db.Text
+  ipAddress    String?  @map("ip_address") @db.VarChar(50)
+  timestamp    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("activity_logs")
+}
+
+model SemesterConfig {
+  id               Int          @id @default(autoincrement())
+  name             String       @db.VarChar(50)
+  schoolYear       String       @map("school_year") @db.VarChar(20)
+  startDate        DateTime     @map("start_date") @db.Date
+  endDate          DateTime     @map("end_date") @db.Date
+  requiredWorkdays Int          @default(12) @map("required_workdays")
+  isActive         Boolean      @default(false) @map("is_active")
+  workCredits      WorkCredit[]
+
+  @@map("semester_configs")
+}
+
+model SystemSettings {
+  id                         Int     @id @default(1)
+  siteName                   String  @default("DThU Workday") @map("site_name") @db.VarChar(100)
+  supportEmail               String  @default("workday@dthu.edu.vn") @map("support_email") @db.VarChar(150)
+  supportPhone               String  @default("02776543210") @map("support_phone") @db.VarChar(20)
+  defaultRequiredWorkdays    Int     @default(12) @map("default_required_workdays")
+  maxConcurrentRegistrations Int     @default(3) @map("max_concurrent_registrations")
+  maintenanceMode            Boolean @default(false) @map("maintenance_mode")
+
+  @@map("system_settings")
 }

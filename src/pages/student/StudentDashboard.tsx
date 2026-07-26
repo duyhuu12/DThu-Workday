@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { parseISO, isAfter } from 'date-fns';
 import { format } from 'date-fns';
@@ -16,10 +16,20 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { EVENT_STATUS_LABELS, EVENT_STATUS_VARIANTS, SHIFT_LABELS } from '@/lib/constants';
 import { formatDate, formatDateTime } from '@/lib/format';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StudentDashboard() {
-  const { events, registrations, notifications, faculties, classes } = useAppStore();
+  const { events, registrations, notifications, faculties, classes, fetchEvents, fetchRegistrations, fetchNotifications } = useAppStore();
   const student = useCurrentStudent();
+  const [loading, setLoading] = useState(events.length === 0 || registrations.length === 0);
+
+  useEffect(() => {
+    Promise.all([
+      fetchEvents(),
+      fetchRegistrations(),
+      fetchNotifications()
+    ]).finally(() => setLoading(false));
+  }, [fetchEvents, fetchRegistrations, fetchNotifications]);
   const myRegs = useMemo(() => registrations.filter((r) => r.studentId === student?.id), [registrations, student]);
   const upcoming = myRegs.filter((r) => { if (r.status !== 'approved' && r.status !== 'pending') return false; const ev = events.find((e) => e.id === r.eventId); return ev && isAfter(parseISO(ev.date), new Date()); });
   const completed = myRegs.filter((r) => r.status === 'completed');
@@ -28,6 +38,30 @@ export default function StudentDashboard() {
   const openEvents = events.filter((e) => e.status === 'open' && isAfter(parseISO(e.registrationClose), new Date())).slice(0, 3);
   const myNotifs = notifications.filter((n) => n.userId === student?.userId).slice(0, 5);
   const chartData = useMemo(() => { const months = []; const now = new Date(); for (let i = 5; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); const m = format(d, 'MM/yyyy'); const count = myRegs.filter((r) => { const ev = events.find((e) => e.id === r.eventId); return ev && ev.date.startsWith(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }).length; months.push({ month: m, ngayCong: count }); } return months; }, [myRegs, events]);
+  if (loading) {
+    return <div className="space-y-6">
+      <PageHeader title="Tổng quan" description="Xin chào, đây là tình hình ngày công của bạn" />
+      <Card className="overflow-hidden border-primary/20">
+        <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-7 w-1/3" />
+            <div className="flex gap-4">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          </div>
+          <Skeleton className="h-16 w-24 rounded-lg" />
+        </CardContent>
+      </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map(i => (
+          <Card key={i}><CardContent className="p-6 flex items-center justify-between"><div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-8 w-12" /></div><Skeleton className="h-10 w-10 rounded-full" /></CardContent></Card>
+        ))}
+      </div>
+      <Card><CardContent className="p-6 space-y-3"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-full" /><Skeleton className="h-2 w-full" /></CardContent></Card>
+    </div>;
+  }
   if (!student) return <div className="space-y-6"><PageHeader title="Tổng quan" /><EmptyState icon={CalendarDays} title="Chưa có thông tin sinh viên" /></div>;
   const fac = faculties.find((f) => f.id === student.facultyId), cls = classes.find((c) => c.id === student.classId);
   return <div className="space-y-6">

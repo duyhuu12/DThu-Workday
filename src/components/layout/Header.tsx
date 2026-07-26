@@ -1,6 +1,7 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -21,12 +22,45 @@ export function Header() {
   const { theme, toggleTheme, mounted } = useTheme();
   const { setMobileOpen } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
   const logout = useLogout();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    let path = '/';
+    const role = currentUser?.role.toLowerCase();
+    if (role === 'student') {
+      path = `/student/work-events?search=${encodeURIComponent(searchQuery.trim())}`;
+    } else if (role === 'organizer') {
+      path = `/organizer/events?search=${encodeURIComponent(searchQuery.trim())}`;
+    } else if (role === 'admin') {
+      path = `/admin/events?search=${encodeURIComponent(searchQuery.trim())}`;
+    } else if (role === 'superadmin') {
+      path = `/superadmin/users?search=${encodeURIComponent(searchQuery.trim())}`;
+    }
+
+    router.push(path);
+  };
+
   if (!currentUser) return null;
   return <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80">
     <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Mở menu"><Menu className="h-5 w-5" /></Button>
     <div className="min-w-0 flex-1"><h2 className="truncate text-base font-semibold text-foreground sm:text-lg">{getPageTitle(pathname ?? '/')}</h2></div>
-    <div className="hidden md:block"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Tìm kiếm..." className="h-9 w-56 pl-9 lg:w-64" aria-label="Tìm kiếm" /></div></div>
+    <div className="hidden md:block">
+      <form onSubmit={handleSearch} className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input 
+          placeholder="Tìm kiếm..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-9 w-56 pl-9 lg:w-64" 
+          aria-label="Tìm kiếm" 
+        />
+      </form>
+    </div>
     <div className="hidden items-center gap-2 rounded-lg border bg-muted/40 px-3 py-1.5 lg:flex"><span className="text-xs font-medium text-muted-foreground">Học kỳ:</span><span className="text-xs font-semibold text-foreground">{CURRENT_SEMESTER} {CURRENT_SCHOOL_YEAR}</span></div>
     <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Giao diện sáng' : 'Giao diện tối'}>{mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</Button>
     <NotificationDropdown />

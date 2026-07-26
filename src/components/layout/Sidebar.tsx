@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronLeft, X } from 'lucide-react';
@@ -13,9 +14,16 @@ export function Sidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const { currentUser } = useAppStore();
   const pathname = usePathname();
+  const [clickedPath, setClickedPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    setClickedPath(null);
+  }, [pathname]);
+
   if (!currentUser || !pathname) return null;
   const sections = NAV_CONFIG[currentUser.role] ?? [];
-  const isActive = (href: string, exact?: boolean) => exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
+  const activePath = clickedPath || pathname;
+  const isActive = (href: string, exact?: boolean) => exact ? activePath === href : activePath === href || activePath.startsWith(href + '/');
   return <>
     {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />}
     <aside className={cn('fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-300', collapsed ? 'w-[68px]' : 'w-64', 'lg:translate-x-0', mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0')}>
@@ -26,7 +34,7 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 scrollbar-thin">
         {sections.map((section, si) => <div key={si} className="space-y-1">
           {section.items.map((item) => { const active = isActive(item.href, item.exact); const Icon = item.icon; return (
-            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors', active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground', collapsed && 'justify-center px-2')} title={collapsed ? item.label : undefined}>
+            <Link key={item.href} href={item.href} onMouseDown={() => setClickedPath(item.href)} onTouchStart={() => setClickedPath(item.href)} onClick={() => { setMobileOpen(false); setClickedPath(item.href); }} className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors', active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground', collapsed && 'justify-center px-2')} title={collapsed ? item.label : undefined}>
               <Icon className="h-5 w-5 shrink-0" />{!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
           ); })}

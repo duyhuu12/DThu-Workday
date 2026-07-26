@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { MessageSquareWarning, Plus, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { useAppStore, useCurrentStudent } from '@/hooks/useAppStore';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -16,14 +16,23 @@ import { useToast } from '@/hooks/use-toast';
 import { COMPLAINT_STATUS_LABELS, COMPLAINT_STATUS_VARIANTS, COMPLAINT_TYPE_LABELS, COMPLAINT_PRIORITY_LABELS, COMPLAINT_PRIORITY_VARIANTS } from '@/lib/constants';
 import { formatDateTime } from '@/lib/format';
 import type { Complaint, ComplaintType, ComplaintPriority } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const TYPE_OPTIONS = Object.keys(COMPLAINT_TYPE_LABELS) as ComplaintType[];
 
 export default function ComplaintsPage() {
-  const { complaints, addComplaint, events, registrations, classes, faculties } = useAppStore();
+  const { complaints, addComplaint, events, registrations, classes, faculties, fetchComplaints, fetchRegistrations } = useAppStore();
   const student = useCurrentStudent();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(complaints.length === 0);
   const [open, setOpen] = useState(false); const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetchComplaints(),
+      fetchRegistrations()
+    ]).finally(() => setLoading(false));
+  }, [fetchComplaints, fetchRegistrations]);
   const [form, setForm] = useState({ title: '', type: 'attendance' as ComplaintType, priority: 'medium' as ComplaintPriority, eventId: '', content: '' });
   const myComplaints = useMemo(() => complaints.filter((c) => c.studentId === student?.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [complaints, student]);
   const myEvents = useMemo(() => registrations.filter((r) => r.studentId === student?.id).map((r) => events.find((e) => e.id === r.eventId)).filter(Boolean), [registrations, events, student]);
@@ -32,6 +41,16 @@ export default function ComplaintsPage() {
     if (!student || !form.title.trim() || !form.content.trim()) { toast({ title: 'Vui lòng điền đầy đủ', variant: 'destructive' }); return; }
     setSubmitting(true);
     try { const ev = events.find((e) => e.id === form.eventId); await addComplaint({ studentId: student.id, studentName: student.fullName, studentCode: student.studentCode, classId: student.classId, className: classes.find((c) => c.id === student.classId)?.name ?? '', facultyId: student.facultyId, facultyName: faculties.find((f) => f.id === student.facultyId)?.name ?? '', eventId: form.eventId === 'none' ? '' : form.eventId, eventName: ev?.name, title: form.title.trim(), type: form.type, priority: form.priority, description: form.content.trim(), status: 'submitted' }); toast({ title: 'Đã gửi khiếu nại', description: 'Khiếu nại sẽ được xem xét' }); setOpen(false); setForm({ title: '', type: 'attendance', priority: 'medium', eventId: '', content: '' }); } finally { setSubmitting(false); }
+  }
+  if (loading) {
+    return <div className="space-y-6">
+      <PageHeader title="Khiếu nại của tôi" description="Gửi và theo dõi khiếu nại"><Button disabled><Plus className="mr-2 h-4 w-4" /> Gửi khiếu nại</Button></PageHeader>
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <Card key={i}><CardContent className="p-5 space-y-3"><Skeleton className="h-6 w-1/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></CardContent></Card>
+        ))}
+      </div>
+    </div>;
   }
 
   return <div className="space-y-6">

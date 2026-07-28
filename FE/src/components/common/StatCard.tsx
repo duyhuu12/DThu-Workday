@@ -1,0 +1,5 @@
+import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
+export function StatCard({ title, value, icon: Icon, description, suffix, iconClassName, className }: { title: string; value: string | number; icon: LucideIcon; description?: string; suffix?: string; iconClassName?: string; className?: string }) {
+  return <div className={cn('rounded-xl border bg-card p-5 shadow-sm', className)}><div className="flex items-start justify-between gap-3"><div className="min-w-0 space-y-1"><p className="text-sm font-medium text-muted-foreground">{title}</p><p className="text-2xl font-bold tracking-tight text-foreground">{value}{suffix && <span className="ml-1 text-sm font-normal text-muted-foreground">{suffix}</span>}</p>{description && <p className="text-xs text-muted-foreground">{description}</p>}</div><div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-lg', iconClassName ?? 'bg-primary/10 text-primary')}><Icon className="h-5 w-5" /></div></div></div>;
+}

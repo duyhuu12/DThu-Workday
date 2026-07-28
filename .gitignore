@@ -1,0 +1,16 @@
+FE/node_modules/
+FE/.next/
+FE/out/
+FE/.env.local
+FE/*.tsbuildinfo
+
+BE/node_modules/
+BE/dist/
+BE/.env
+BE/*.tsbuildinfo
+
+.env
+*.log
+.DS_Store
+.vscode/
+.idea/

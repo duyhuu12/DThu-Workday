@@ -50,7 +50,7 @@ async function recalculateStudentWorkdays(studentId: number, tx: any) {
 export async function listCredits(filters: { studentId?: string, status?: string }, userRole: string, currentStudentId: number | null) {
   let whereClause: any = {};
 
-  if (userRole === 'STUDENT' || userRole === 'student') {
+  if (['STUDENT', 'CLASS_LEADER', 'student', 'classleader'].includes(userRole)) {
     if (!currentStudentId) {
       throw new BusinessError(400, 'Không tìm thấy thông tin sinh viên');
     }

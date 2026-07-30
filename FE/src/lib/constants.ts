@@ -1,9 +1,10 @@
 import type { AttendanceStatus, ComplaintPriority, ComplaintStatus, ComplaintType, CreditStatus, EventStatus, NotificationType, RegistrationStatus, UserRole, WorkShift } from '@/types';
 
-export const ROLE_LABELS: Record<UserRole, string> = { student: 'Sinh viên', organizer: 'Người phụ trách', admin: 'Quản trị viên', superadmin: 'Super Admin' };
-export const ROLE_HOME: Record<UserRole, string> = { student: '/student/dashboard', organizer: '/organizer/dashboard', admin: '/admin/dashboard', superadmin: '/superadmin/dashboard' };
+export const ROLE_LABELS: Record<UserRole, string> = { student: 'Sinh viên', classleader: 'Cán bộ lớp', organizer: 'Người phụ trách', admin: 'Quản trị viên', superadmin: 'Super Admin' };
+export const ROLE_HOME: Record<UserRole, string> = { student: '/student/dashboard', classleader: '/classleader/dashboard', organizer: '/organizer/dashboard', admin: '/admin/dashboard', superadmin: '/superadmin/dashboard' };
 export const DEMO_ACCOUNTS = [
   { email: 'student@dthu.edu.vn', role: 'student' as UserRole },
+  { email: 'classleader@dthu.edu.vn', role: 'classleader' as UserRole },
   { email: 'organizer@dthu.edu.vn', role: 'organizer' as UserRole },
   { email: 'admin@dthu.edu.vn', role: 'admin' as UserRole },
   { email: 'superadmin@dthu.edu.vn', role: 'superadmin' as UserRole },

@@ -32,16 +32,16 @@ notepad .\BE\.env
 Các giá trị quan trọng:
 
 ```env
-DATABASE_URL="mysql://dthu_app:dinhhuuduy46@127.0.0.1:3306/dthu_workday"
+DATABASE_URL="mysql://dthu_app:YOUR_APP_PASSWORD@127.0.0.1:3306/dthu_workday"
 DATABASE_HOST=127.0.0.1
 DATABASE_PORT=3306
 DATABASE_USER=dthu_app
-DATABASE_PASSWORD=dinhhuuduy46
+DATABASE_PASSWORD=YOUR_APP_PASSWORD
 DATABASE_NAME=dthu_workday
 JWT_SECRET=CHUOI_BI_MAT_DAI_HON_32_KY_TU
 ```
 
-`dinhhuuduy46` là mật khẩu gốc. Phần mật khẩu trong `DATABASE_URL` phải URL-encode nếu có ký tự đặc biệt.
+`YOUR_APP_PASSWORD` là mật khẩu của tài khoản MySQL `dthu_app`. Phần mật khẩu trong `DATABASE_URL` phải URL-encode nếu có ký tự đặc biệt.
 
 ### Frontend
 
@@ -213,3 +213,21 @@ Có thể chạy kiểm thử CRUD không phá dữ liệu:
 ```powershell
 .\TEST_DATABASE_CRUD.ps1
 ```
+
+## 11. Role Cán bộ lớp/Lớp trưởng
+
+Role `CLASS_LEADER` quản lý dữ liệu đúng lớp được phân công, theo dõi đăng ký, nhắc ngày công, xác nhận sơ bộ, gửi thông báo và xuất CSV. Role này không có quyền sửa ngày công.
+
+Áp dụng migration mới:
+
+```powershell
+cd BE
+npx prisma generate
+npx prisma migrate deploy
+```
+
+Sau đó Admin vào `/admin/class-leaders` để phân công một sinh viên đang có trong lớp. Không cần seed lại database hiện tại.
+
+Xem chi tiết tại [`ROLE2_CLASS_LEADER_AUDIT.md`](./ROLE2_CLASS_LEADER_AUDIT.md).
+
+Kết quả kiểm tra Role 2: [`ROLE2_VALIDATION.md`](./ROLE2_VALIDATION.md).

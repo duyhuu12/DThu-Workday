@@ -23,7 +23,7 @@ export async function getComplaints(req: AuthRequest, res: Response) {
 
 // 2. Student submit a complaint
 export async function createComplaint(req: AuthRequest, res: Response) {
-  if (!req.user || req.user.role !== 'STUDENT') {
+  if (!req.user || !['STUDENT', 'CLASS_LEADER'].includes(req.user.role)) {
     res.status(403).json({ success: false, message: 'Chỉ sinh viên mới có quyền gửi khiếu nại' });
     return;
   }

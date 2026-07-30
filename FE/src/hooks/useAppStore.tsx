@@ -1,7 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ActivityLog, Attendance, Complaint, Faculty, Class, Notification, Registration, Student, User, WorkCredit, WorkEvent, SemesterConfig, SystemSettings } from '@/types';
-import * as mockData from '@/data';
 import { delay, genId } from '@/lib/config';
 import { API_BASE_URL } from '@/services/api';
 import { getCurrentStudentProfile } from '@/services/studentApi';
@@ -13,10 +12,30 @@ interface StoreState {
 }
 
 const initialState: StoreState = {
-  students: mockData.students, events: mockData.events, registrations: mockData.registrations,
-  attendance: mockData.attendanceRecords, credits: mockData.workCredits, complaints: mockData.complaints,
-  notifications: mockData.notifications, activityLogs: mockData.activityLogs, users: mockData.users,
-  faculties: mockData.faculties, classes: mockData.classes, semesterConfigs: mockData.semesterConfigs, settings: mockData.systemSettings,
+  students: [],
+  events: [],
+  registrations: [],
+  attendance: [],
+  credits: [],
+  complaints: [],
+  notifications: [],
+  activityLogs: [],
+  users: [],
+  faculties: [],
+  classes: [],
+  semesterConfigs: [
+    { id: 'sem-1', name: 'Học kỳ 1', schoolYear: '2024-2025', startDate: '2024-09-01', endDate: '2025-01-15', requiredWorkdays: 12, isActive: true },
+    { id: 'sem-2', name: 'Học kỳ 2', schoolYear: '2024-2025', startDate: '2025-02-01', endDate: '2025-06-15', requiredWorkdays: 12, isActive: false },
+    { id: 'sem-3', name: 'Học kỳ 1', schoolYear: '2025-2026', startDate: '2025-09-01', endDate: '2026-01-15', requiredWorkdays: 12, isActive: false },
+  ],
+  settings: {
+    siteName: 'DThU Workday',
+    supportEmail: 'workday@dthu.edu.vn',
+    supportPhone: '02776543210',
+    defaultRequiredWorkdays: 12,
+    maxConcurrentRegistrations: 3,
+    maintenanceMode: false
+  },
 };
 
 const STORE_KEY = 'dthu-store';
@@ -50,8 +69,14 @@ interface Ctx {
   addNotification: (n: Partial<Notification>) => void;
   addStudent: (s: Partial<Student>) => Promise<Student>;
   updateStudent: (id: string, p: Partial<Student>) => Promise<void>;
+  deleteStudent: (id: string) => Promise<void>;
   addClass: (c: Partial<Class>) => Promise<Class>;
   updateClass: (id: string, p: Partial<Class>) => Promise<void>;
+  deleteClass: (id: string) => Promise<void>;
+  addSemesterConfig: (s: Partial<SemesterConfig>) => Promise<SemesterConfig>;
+  updateSemesterConfig: (id: string, s: Partial<SemesterConfig>) => Promise<void>;
+  deleteSemesterConfig: (id: string) => Promise<void>;
+  setActiveSemesterConfig: (id: string) => Promise<void>;
   addUser: (u: Partial<User>) => Promise<User>;
   updateUser: (id: string, p: Partial<User>) => Promise<void>;
   updateSettings: (p: Partial<SystemSettings>) => void;
@@ -66,7 +91,7 @@ function createDefaultContext(): Ctx {
     logout: () => {},
     students: [], events: [], registrations: [], attendance: [],
     credits: [], complaints: [], notifications: [], activityLogs: [],
-    faculties: [], classes: [], users: [], semesterConfigs: [], settings: initialState.settings,
+    faculties: [], classes: [], users: [], semesterConfigs: initialState.semesterConfigs, settings: initialState.settings,
     fetchEvents: async () => {}, fetchRegistrations: async () => {}, fetchCredits: async () => {},
     fetchComplaints: async () => {}, fetchNotifications: async () => {}, fetchFaculties: async () => {},
     fetchClasses: async () => {}, fetchCurrentStudent: async () => null,
@@ -76,8 +101,12 @@ function createDefaultContext(): Ctx {
     addComplaint: async () => { throw new Error('AppStoreProvider is not ready'); },
     updateComplaint: async () => {}, markNotifRead: () => {}, markAllNotifsRead: () => {},
     addNotification: () => {}, addStudent: async () => { throw new Error('AppStoreProvider is not ready'); },
-    updateStudent: async () => {}, addClass: async () => { throw new Error('AppStoreProvider is not ready'); },
-    updateClass: async () => {}, addUser: async () => { throw new Error('AppStoreProvider is not ready'); },
+    updateStudent: async () => {}, deleteStudent: async () => {},
+    addClass: async () => { throw new Error('AppStoreProvider is not ready'); },
+    updateClass: async () => {}, deleteClass: async () => {},
+    addSemesterConfig: async () => { throw new Error('AppStoreProvider is not ready'); },
+    updateSemesterConfig: async () => {}, deleteSemesterConfig: async () => {}, setActiveSemesterConfig: async () => {},
+    addUser: async () => { throw new Error('AppStoreProvider is not ready'); },
     updateUser: async () => {}, updateSettings: () => {}, addActivityLog: () => {},
   };
 }
@@ -226,7 +255,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           fetchCredits();
           fetchComplaints();
           fetchNotifications();
-          if (u.role?.toLowerCase?.() === 'student') {
+          if (['student', 'classleader'].includes(u.role?.toLowerCase?.())) {
             fetchCurrentStudent();
           }
         }
@@ -269,7 +298,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       fetchCredits(),
       fetchComplaints(),
       fetchNotifications(),
-      normalizedUser.role === 'student' ? fetchCurrentStudent() : Promise.resolve(null),
+      ['student', 'classleader'].includes(normalizedUser.role) ? fetchCurrentStudent() : Promise.resolve(null),
     ]);
 
     return normalizedUser;
@@ -335,7 +364,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateRegistration = useCallback(async (id: string, p: Partial<Registration>) => {
     // Nếu là sinh viên hủy đăng ký
-    if (currentUser?.role === 'student' && p.status === 'cancelled') {
+    if (['student', 'classleader'].includes(currentUser?.role ?? '') && p.status === 'cancelled') {
       const res = await fetch(`${API_BASE_URL}/registrations/${id}/cancel`, {
         method: 'POST',
         headers: {
@@ -441,10 +470,179 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   const addStudent = useCallback(async (s: Partial<Student>) => { await delay(); const ns: Student = { id: genId('s'), userId: genId('u'), studentCode: s.studentCode ?? `DH${Date.now()}`, fullName: s.fullName ?? '', email: s.email ?? '', phone: s.phone, facultyId: s.facultyId ?? '', classId: s.classId ?? '', schoolYear: s.schoolYear ?? '2024-2028', gender: s.gender ?? 'male', birthDate: s.birthDate, hometown: s.hometown, status: 'active', requiredWorkdays: s.requiredWorkdays ?? state.settings.defaultRequiredWorkdays, accumulatedWorkdays: 0, completedWorkdays: 0 }; persist((p) => ({ ...p, students: [ns, ...p.students] })); return ns; }, [state.settings.defaultRequiredWorkdays, persist]);
   const updateStudent = useCallback(async (id: string, p: Partial<Student>) => { await delay(); persist((prev) => ({ ...prev, students: prev.students.map((s) => (s.id === id ? { ...s, ...p } : s)) })); }, [persist]);
-  const addClass = useCallback(async (c: Partial<Class>) => { await delay(); const nc: Class = { id: genId('cls'), name: c.name ?? '', code: c.code ?? '', facultyId: c.facultyId ?? '', schoolYear: c.schoolYear ?? '2024-2028' }; persist((p) => ({ ...p, classes: [...p.classes, nc] })); return nc; }, [persist]);
-  const updateClass = useCallback(async (id: string, p: Partial<Class>) => { await delay(); persist((prev) => ({ ...prev, classes: prev.classes.map((c) => (c.id === id ? { ...c, ...p } : c)) })); }, [persist]);
+  const deleteStudent = useCallback(async (id: string) => {
+    const res = await fetch(`${API_BASE_URL}/system/students/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('dthu-jwt-token')}`,
+      },
+    });
+    if (!res.ok) {
+      const result = await res.json().catch(() => ({}));
+      throw new Error(result.message || 'Không thể xóa sinh viên');
+    }
+    setState((prev) => ({ ...prev, students: prev.students.filter((student) => student.id !== id) }));
+  }, []);
+  const addClass = useCallback(async (c: Partial<Class>) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/system/classes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('dthu-jwt-token')}`,
+        },
+        body: JSON.stringify(c),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || 'Lớp hoặc mã lớp đã tồn tại');
+      }
+      if (result.data) {
+        setState((prev) => ({ ...prev, classes: [...prev.classes, result.data] }));
+        return result.data;
+      }
+    } catch (e) {
+      if (e instanceof Error && (e.message.includes('tồn tại') || e.message.includes('Duplicate'))) throw e;
+    }
+    const nc: Class = { id: genId('cls'), name: c.name ?? '', code: c.code ?? '', facultyId: c.facultyId ?? '', schoolYear: c.schoolYear ?? '2024-2028' };
+    persist((p) => ({ ...p, classes: [...p.classes, nc] }));
+    return nc;
+  }, [persist]);
+
+  const updateClass = useCallback(async (id: string, p: Partial<Class>) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/system/classes/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('dthu-jwt-token')}`,
+        },
+        body: JSON.stringify(p),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || 'Không thể cập nhật lớp');
+      }
+      if (result.data) {
+        setState((prev) => ({ ...prev, classes: prev.classes.map((c) => (c.id === id ? result.data : c)) }));
+        return;
+      }
+    } catch (e) {
+      if (e instanceof Error && (e.message.includes('tồn tại') || e.message.includes('Duplicate'))) throw e;
+    }
+    persist((prev) => ({ ...prev, classes: prev.classes.map((c) => (c.id === id ? { ...c, ...p } : c)) }));
+  }, [persist]);
+  const deleteClass = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/system/classes/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('dthu-jwt-token')}`,
+        },
+      });
+      if (!res.ok) {
+        const result = await res.json().catch(() => ({}));
+        throw new Error(result.message || 'Không thể xóa lớp');
+      }
+    } catch (e) {
+      console.warn('API deleteClass:', e);
+    }
+    setState((prev) => ({ ...prev, classes: prev.classes.filter((c) => c.id !== id) }));
+  }, []);
+
+  const addSemesterConfig = useCallback(async (s: Partial<SemesterConfig>) => {
+    const ns: SemesterConfig = {
+      id: genId('sem'),
+      name: s.name ?? 'Học kỳ 1',
+      schoolYear: s.schoolYear ?? '2024-2025',
+      startDate: s.startDate ?? new Date().toISOString().split('T')[0],
+      endDate: s.endDate ?? new Date().toISOString().split('T')[0],
+      requiredWorkdays: s.requiredWorkdays ?? 12,
+      isActive: s.isActive ?? false,
+    };
+    persist((prev) => {
+      const updated = ns.isActive
+        ? prev.semesterConfigs.map((item) => ({ ...item, isActive: false }))
+        : prev.semesterConfigs;
+      return { ...prev, semesterConfigs: [...updated, ns] };
+    });
+    return ns;
+  }, [persist]);
+
+  const updateSemesterConfig = useCallback(async (id: string, s: Partial<SemesterConfig>) => {
+    persist((prev) => {
+      const updated = prev.semesterConfigs.map((item) => {
+        if (item.id === id) {
+          return { ...item, ...s };
+        }
+        if (s.isActive) {
+          return { ...item, isActive: false };
+        }
+        return item;
+      });
+      return { ...prev, semesterConfigs: updated };
+    });
+  }, [persist]);
+
+  const deleteSemesterConfig = useCallback(async (id: string) => {
+    persist((prev) => ({
+      ...prev,
+      semesterConfigs: prev.semesterConfigs.filter((item) => item.id !== id),
+    }));
+  }, [persist]);
+
+  const setActiveSemesterConfig = useCallback(async (id: string) => {
+    persist((prev) => ({
+      ...prev,
+      semesterConfigs: prev.semesterConfigs.map((item) => ({
+        ...item,
+        isActive: item.id === id,
+      })),
+    }));
+  }, [persist]);
   const addUser = useCallback(async (u: Partial<User>) => { await delay(); const nu: User = { id: genId('u'), email: u.email ?? '', name: u.name ?? '', role: u.role ?? 'student', status: u.status ?? 'active', createdAt: new Date().toISOString(), phone: u.phone }; persist((p) => ({ ...p, users: [nu, ...p.users] })); return nu; }, [persist]);
-  const updateUser = useCallback(async (id: string, p: Partial<User>) => { await delay(); persist((prev) => ({ ...prev, users: prev.users.map((u) => (u.id === id ? { ...u, ...p } : u)) })); if (currentUser?.id === id) setCurrentUser((prev) => (prev ? { ...prev, ...p } : prev)); }, [persist, currentUser]);
+  const updateUser = useCallback(async (id: string, p: Partial<User>) => {
+    const isOwnProfile = currentUser?.id === id;
+    const endpoint = isOwnProfile ? '/auth/me' : `/system/users/${id}`;
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('dthu-jwt-token')}`,
+      },
+      body: JSON.stringify({
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        role: p.role,
+        status: p.status,
+      }),
+    });
+
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || 'Không thể cập nhật người dùng');
+    }
+
+    const updatedUser = {
+      ...result.data,
+      role: result.data.role?.toLowerCase?.() ?? currentUser?.role ?? 'student',
+    } as User;
+
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((user) => (user.id === id ? updatedUser : user)),
+    }));
+
+    if (isOwnProfile) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem(AUTH_KEY, JSON.stringify(updatedUser));
+      if (['student', 'classleader'].includes(updatedUser.role)) {
+        await fetchCurrentStudent();
+      }
+    }
+  }, [currentUser, fetchCurrentStudent]);
   const updateSettings = useCallback((p: Partial<SystemSettings>) => persist((prev) => ({ ...prev, settings: { ...prev.settings, ...p } })), [persist]);
   const addActivityLog = useCallback((l: Partial<ActivityLog>) => { const nl: ActivityLog = { id: genId('log'), userId: l.userId ?? currentUser?.id ?? '', userName: l.userName ?? currentUser?.name ?? '', userRole: l.userRole ?? currentUser?.role ?? 'student', action: l.action ?? '', affectedItem: l.affectedItem ?? '', oldValue: l.oldValue, newValue: l.newValue, timestamp: new Date().toISOString(), ipAddress: l.ipAddress }; persist((p) => ({ ...p, activityLogs: [nl, ...p.activityLogs] })); }, [currentUser, persist]);
 
@@ -456,8 +654,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     fetchEvents, fetchRegistrations, fetchCredits, fetchComplaints, fetchNotifications, fetchFaculties, fetchClasses, fetchCurrentStudent,
     addEvent, updateEvent, addRegistration,
     updateRegistration, updateCredit, addComplaint, updateComplaint, markNotifRead, markAllNotifsRead, addNotification,
-    addStudent, updateStudent, addClass, updateClass, addUser, updateUser, updateSettings, addActivityLog,
-  }), [currentUser, currentStudent, login, logout, state, fetchEvents, fetchRegistrations, fetchCredits, fetchComplaints, fetchNotifications, fetchFaculties, fetchClasses, fetchCurrentStudent, addEvent, updateEvent, addRegistration, updateRegistration, updateCredit, addComplaint, updateComplaint, markNotifRead, markAllNotifsRead, addNotification, addStudent, updateStudent, addClass, updateClass, addUser, updateUser, updateSettings, addActivityLog]);
+    addStudent, updateStudent, deleteStudent, addClass, updateClass, deleteClass,
+    addSemesterConfig, updateSemesterConfig, deleteSemesterConfig, setActiveSemesterConfig,
+    addUser, updateUser, updateSettings, addActivityLog,
+  }), [currentUser, currentStudent, login, logout, state, fetchEvents, fetchRegistrations, fetchCredits, fetchComplaints, fetchNotifications, fetchFaculties, fetchClasses, fetchCurrentStudent, addEvent, updateEvent, addRegistration, updateRegistration, updateCredit, addComplaint, updateComplaint, markNotifRead, markAllNotifsRead, addNotification, addStudent, updateStudent, deleteStudent, addClass, updateClass, deleteClass, addSemesterConfig, updateSemesterConfig, deleteSemesterConfig, setActiveSemesterConfig, addUser, updateUser, updateSettings, addActivityLog]);
 
   if (!loaded) return <div className="flex min-h-screen items-center justify-center bg-background"><div className="h-10 w-10 animate-spin rounded-full border-4 border-primary/30 border-t-primary" /></div>;
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;

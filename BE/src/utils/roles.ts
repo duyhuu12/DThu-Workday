@@ -3,16 +3,22 @@ import { BusinessError } from './errors.js';
 
 const ROLE_MAP: Record<string, UserRole> = {
   STUDENT: UserRole.STUDENT,
+  CLASS_LEADER: UserRole.CLASS_LEADER,
+  CLASSLEADER: UserRole.CLASS_LEADER,
   ORGANIZER: UserRole.ORGANIZER,
   ADMIN: UserRole.ADMIN,
   SUPER_ADMIN: UserRole.SUPER_ADMIN,
   SUPERADMIN: UserRole.SUPER_ADMIN,
   student: UserRole.STUDENT,
+  class_leader: UserRole.CLASS_LEADER,
+  classleader: UserRole.CLASS_LEADER,
   organizer: UserRole.ORGANIZER,
   admin: UserRole.ADMIN,
   super_admin: UserRole.SUPER_ADMIN,
   superadmin: UserRole.SUPER_ADMIN,
 };
+
+export type ApiUserRole = 'student' | 'classleader' | 'organizer' | 'admin' | 'superadmin';
 
 export function normalizeRole(role: unknown): UserRole {
   const value = String(role ?? '').trim();
@@ -28,11 +34,13 @@ export function normalizeRole(role: unknown): UserRole {
   return mapped;
 }
 
-export function toApiRole(role: unknown): 'student' | 'organizer' | 'admin' | 'superadmin' {
+export function toApiRole(role: unknown): ApiUserRole {
   const normalized = normalizeRole(role);
   switch (normalized) {
     case UserRole.STUDENT:
       return 'student';
+    case UserRole.CLASS_LEADER:
+      return 'classleader';
     case UserRole.ORGANIZER:
       return 'organizer';
     case UserRole.ADMIN:
@@ -40,6 +48,11 @@ export function toApiRole(role: unknown): 'student' | 'organizer' | 'admin' | 's
     case UserRole.SUPER_ADMIN:
       return 'superadmin';
   }
+}
+
+export function isStudentLikeRole(role: unknown): boolean {
+  const normalized = normalizeRole(role);
+  return normalized === UserRole.STUDENT || normalized === UserRole.CLASS_LEADER;
 }
 
 export function isRole(role: unknown, expected: UserRole): boolean {

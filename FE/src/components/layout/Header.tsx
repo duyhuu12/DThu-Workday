@@ -18,13 +18,18 @@ import { getPageTitle } from './Breadcrumbs';
 const initials = (name: string) => name.trim().split(' ').slice(-2).map((p) => p[0]).join('').toUpperCase();
 
 export function Header() {
-  const { currentUser } = useAppStore();
+  const { currentUser, events, semesterConfigs } = useAppStore();
   const { theme, toggleTheme, mounted } = useTheme();
   const { setMobileOpen } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
   const logout = useLogout();
   const [searchQuery, setSearchQuery] = useState('');
+
+  const activeSemester = semesterConfigs.find((s) => s.isActive) ?? {
+    name: CURRENT_SEMESTER,
+    schoolYear: CURRENT_SCHOOL_YEAR,
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +39,8 @@ export function Header() {
     const role = currentUser?.role.toLowerCase();
     if (role === 'student') {
       path = `/student/work-events?search=${encodeURIComponent(searchQuery.trim())}`;
+    } else if (role === 'classleader') {
+      path = `/classleader/students?search=${encodeURIComponent(searchQuery.trim())}`;
     } else if (role === 'organizer') {
       path = `/organizer/events?search=${encodeURIComponent(searchQuery.trim())}`;
     } else if (role === 'admin') {
@@ -48,7 +55,7 @@ export function Header() {
   if (!currentUser) return null;
   return <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80">
     <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Mở menu"><Menu className="h-5 w-5" /></Button>
-    <div className="min-w-0 flex-1"><h2 className="truncate text-base font-semibold text-foreground sm:text-lg">{getPageTitle(pathname ?? '/')}</h2></div>
+    <div className="min-w-0 flex-1"><h2 className="truncate text-base font-semibold text-foreground sm:text-lg">{getPageTitle(pathname ?? '/', events)}</h2></div>
     <div className="hidden md:block">
       <form onSubmit={handleSearch} className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -61,7 +68,10 @@ export function Header() {
         />
       </form>
     </div>
-    <div className="hidden items-center gap-2 rounded-lg border bg-muted/40 px-3 py-1.5 lg:flex"><span className="text-xs font-medium text-muted-foreground">Học kỳ:</span><span className="text-xs font-semibold text-foreground">{CURRENT_SEMESTER} {CURRENT_SCHOOL_YEAR}</span></div>
+    <div className="hidden items-center gap-2 rounded-lg border bg-muted/40 px-3 py-1.5 lg:flex">
+      <span className="text-xs font-medium text-muted-foreground">Học kỳ:</span>
+      <span className="text-xs font-semibold text-foreground">{activeSemester.name} {activeSemester.schoolYear}</span>
+    </div>
     <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Giao diện sáng' : 'Giao diện tối'}>{mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</Button>
     <NotificationDropdown />
     <DropdownMenu>

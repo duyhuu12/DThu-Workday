@@ -12,6 +12,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
+import classLeaderRoutes from './routes/classLeaderRoutes.js';
 
 const app = express();
 const port = Number(process.env.PORT) || 8080;
@@ -45,6 +46,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/class-leader', classLeaderRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ success: false, message: 'Không tìm thấy API endpoint' });

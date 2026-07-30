@@ -61,6 +61,7 @@ function mapStudent(student: any) {
     requiredWorkdays: student.requiredWorkdays,
     accumulatedWorkdays: student.accumulatedWorkdays,
     completedWorkdays: student.completedWorkdays,
+    accountRole: student.user ? toApiRole(student.user.role) : 'student',
   };
 }
 
@@ -74,6 +75,8 @@ function mapUser(user: any) {
     status: apiAccountStatus(user.status),
     createdAt: user.createdAt.toISOString(),
     lastLogin: user.lastLoginAt ? user.lastLoginAt.toISOString() : undefined,
+    managedClassId: user.managedClassId ? String(user.managedClassId) : undefined,
+    managedClassName: user.managedClass?.name || undefined,
   };
 }
 
@@ -240,10 +243,14 @@ export async function deleteClass(idValue: unknown, actorId: number, ipAddress?:
 
 // STUDENTS
 export async function listStudents(viewerRole: UserRole, viewerStudentId?: number | null) {
-  const where = viewerRole === UserRole.STUDENT
+  const where = [UserRole.STUDENT, UserRole.CLASS_LEADER].includes(viewerRole)
     ? { id: viewerStudentId || -1 }
     : undefined;
-  const list = await prisma.student.findMany({ where, orderBy: { fullName: 'asc' } });
+  const list = await prisma.student.findMany({
+    where,
+    include: { user: true },
+    orderBy: { fullName: 'asc' },
+  });
   return list.map(mapStudent);
 }
 
@@ -341,6 +348,7 @@ export async function updateStudent(idValue: unknown, input: any, actorId: numbe
         email,
         phone: input.phone === undefined ? existing.phone : (input.phone ? String(input.phone).trim() : null),
         status,
+        ...(existing.user.role === UserRole.CLASS_LEADER ? { managedClassId: classId } : {}),
       },
     });
     return tx.student.update({
@@ -377,7 +385,8 @@ export async function deleteStudent(idValue: unknown, actorId: number, ipAddress
 // USERS (non-student accounts; student accounts are managed with the student module)
 export async function listUsers() {
   const list = await prisma.user.findMany({
-    where: { role: { not: UserRole.STUDENT } },
+    where: { role: { notIn: [UserRole.STUDENT, UserRole.CLASS_LEADER] } },
+    include: { managedClass: true },
     orderBy: { fullName: 'asc' },
   });
   return list.map(mapUser);
@@ -387,7 +396,7 @@ export async function createUser(input: any, actorId: number, ipAddress?: string
   const name = String(input.name ?? input.fullName ?? '').trim();
   const email = String(input.email ?? '').trim().toLowerCase();
   const role = normalizeRole(input.role || 'ORGANIZER');
-  if (role === UserRole.STUDENT) throw new BusinessError(400, 'Hãy tạo tài khoản sinh viên tại trang Quản lý sinh viên');
+  if ([UserRole.STUDENT, UserRole.CLASS_LEADER].includes(role)) throw new BusinessError(400, 'Sinh viên và cán bộ lớp phải được quản lý tại mô-đun sinh viên/cán bộ lớp');
   if (!name || !email) throw new BusinessError(400, 'Họ tên và email là bắt buộc');
   const duplicate = await prisma.user.findUnique({ where: { email } });
   if (duplicate) throw new BusinessError(409, 'Email đã tồn tại');
@@ -418,7 +427,7 @@ export async function updateUser(idValue: unknown, input: any, actorId: number, 
     : String(input.name ?? input.fullName).trim();
   const email = input.email === undefined ? existing.email : String(input.email).trim().toLowerCase();
   const role = input.role === undefined ? existing.role : normalizeRole(input.role);
-  if (role === UserRole.STUDENT) throw new BusinessError(400, 'Vai trò sinh viên phải được quản lý tại trang Quản lý sinh viên');
+  if ([UserRole.STUDENT, UserRole.CLASS_LEADER].includes(role)) throw new BusinessError(400, 'Vai trò sinh viên/cán bộ lớp phải được quản lý tại mô-đun chuyên biệt');
   if (!fullName || !email) throw new BusinessError(400, 'Họ tên và email là bắt buộc');
 
   const duplicate = await prisma.user.findFirst({ where: { email, NOT: { id } } });
@@ -446,7 +455,7 @@ export async function deleteUser(idValue: unknown, actorId: number, ipAddress?: 
     include: { _count: { select: { eventsManaged: true } } },
   });
   if (!existing) throw new BusinessError(404, 'Không tìm thấy người dùng');
-  if (existing.role === UserRole.STUDENT) throw new BusinessError(400, 'Hãy xóa sinh viên tại trang Quản lý sinh viên');
+  if ([UserRole.STUDENT, UserRole.CLASS_LEADER].includes(existing.role)) throw new BusinessError(400, 'Hãy quản lý tài khoản này tại trang Sinh viên/Cán bộ lớp');
   if (existing._count.eventsManaged > 0) {
     throw new BusinessError(409, 'Không thể xóa người phụ trách đang có sự kiện');
   }

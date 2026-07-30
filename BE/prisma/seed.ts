@@ -94,6 +94,19 @@ async function main() {
     }
   });
 
+  const userClassLeader = await prisma.user.create({
+    data: {
+      email: 'classleader@dthu.edu.vn',
+      fullName: 'Nguyễn Bình',
+      passwordHash: passHash,
+      role: UserRole.CLASS_LEADER,
+      status: AccountStatus.ACTIVE,
+      phone: '0912345688',
+      managedClassId: c1.id,
+      createdAt: new Date('2021-09-01T00:00:00Z'),
+    }
+  });
+
   const userOrganizer = await prisma.user.create({
     data: {
       email: 'organizer@dthu.edu.vn',
@@ -151,9 +164,26 @@ async function main() {
     }
   });
 
+  const studentClassLeader = await prisma.student.create({
+    data: {
+      userId: userClassLeader.id,
+      studentCode: 'DHTIN21002',
+      fullName: 'Nguyễn Bình',
+      email: 'classleader@dthu.edu.vn',
+      phone: '0912345688',
+      facultyId: f1.id,
+      classId: c1.id,
+      schoolYear: '2021-2025',
+      gender: 'female',
+      status: AccountStatus.ACTIVE,
+      requiredWorkdays: 12,
+      accumulatedWorkdays: 5,
+      completedWorkdays: 4,
+    }
+  });
+
   // Seed thêm các sinh viên khác từ mockData
   const mockStudents = [
-    { name: 'Nguyễn Bình', code: 'DHTIN21002', class: c1, faculty: f1, acc: 5, comp: 4 },
     { name: 'Trần Cường', code: 'DHTIN21009', class: c2, faculty: f1, acc: 6, comp: 5 },
     { name: 'Lê Dũng', code: 'DHVAN21001', class: c3, faculty: f2, acc: 4, comp: 4 },
     { name: 'Phạm Giang', code: 'DHVAN22002', class: c4, faculty: f2, acc: 3, comp: 2 },
@@ -163,7 +193,7 @@ async function main() {
     { name: 'Bùi Minh', code: 'DHCNS22002', class: c8, faculty: f4, acc: 5, comp: 5 },
   ];
 
-  const dbStudents = [studentAn];
+  const dbStudents = [studentAn, studentClassLeader];
 
   for (let i = 0; i < mockStudents.length; i++) {
     const ms = mockStudents[i];

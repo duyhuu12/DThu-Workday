@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { EVENT_STATUS_LABELS, EVENT_STATUS_VARIANTS } from '@/lib/constants';
 import { formatDate } from '@/lib/format';
 
-const PIE_COLORS = ['#hsl(var(--primary))', '#hsl(var(--secondary))', '#f59e0b', '#hsl(var(--success))', '#64748b', '#ef4444', '#3b82f6', '#a855f7'];
+const PIE_COLORS = ['hsl(var(--primary))', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#64748b'];
 
 export default function AdminDashboard() {
   const { events, students, registrations, complaints, activityLogs } = useAppStore();

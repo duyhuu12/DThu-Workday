@@ -1,13 +1,13 @@
-export type UserRole = 'student' | 'organizer' | 'admin' | 'superadmin';
+export type UserRole = 'student' | 'classleader' | 'organizer' | 'admin' | 'superadmin';
 
 export interface Role { id: string; name: string; key: UserRole; description: string; permissions: string[]; }
-export interface User { id: string; email: string; name: string; role: UserRole; phone?: string; status: 'active' | 'locked'; createdAt: string; lastLogin?: string; studentCode?: string; }
+export interface User { id: string; email: string; name: string; role: UserRole; phone?: string; status: 'active' | 'locked'; createdAt: string; lastLogin?: string; studentCode?: string; managedClassId?: string; managedClassName?: string; }
 export interface Faculty { id: string; name: string; code: string; }
 export interface Class { id: string; name: string; code: string; facultyId: string; schoolYear: string; }
 export interface Student {
   id: string; userId: string; studentCode: string; fullName: string; email: string; phone?: string;
   facultyId: string; classId: string; schoolYear: string; gender: 'male' | 'female'; birthDate?: string; hometown?: string;
-  status: 'active' | 'locked'; requiredWorkdays: number; accumulatedWorkdays: number; completedWorkdays: number;
+  status: 'active' | 'locked'; requiredWorkdays: number; accumulatedWorkdays: number; completedWorkdays: number; accountRole?: UserRole;
   facultyName?: string; className?: string;
 }
 export type WorkShift = 'morning' | 'afternoon' | 'evening' | 'fullday';
@@ -29,6 +29,7 @@ export interface Registration {
   status: RegistrationStatus; registeredAt: string; approvedAt?: string; approvedBy?: string;
   rejectionReason?: string; attendanceStatus?: AttendanceStatus; workdayResult?: number; notes?: string;
   selectedDate?: string; selectedShift?: WorkShift; selectedStartTime?: string; selectedEndTime?: string;
+  preliminaryStatus?: 'unreviewed' | 'confirmed' | 'needs_review'; preliminaryReviewedAt?: string; preliminaryReviewerName?: string;
 }
 export type AttendanceStatus = 'not_checked' | 'checked_in' | 'checked_out' | 'late' | 'early_leave' | 'absent';
 export interface Attendance { id: string; eventId: string; studentId: string; studentCode: string; studentName: string; className?: string; facultyName?: string; status: AttendanceStatus; checkInTime?: string; checkOutTime?: string; notes?: string; }
@@ -92,4 +93,33 @@ export interface StudentQrScanResult extends Attendance {
   eventDate: string;
   action: 'check_in' | 'check_out';
   message: string;
+}
+
+
+export type PreliminaryReviewStatus = 'unreviewed' | 'confirmed' | 'needs_review';
+
+export interface ClassLeaderProfile {
+  userId: string; fullName: string; studentCode?: string; classId: string; classCode: string;
+  className: string; schoolYear: string; facultyId: string; facultyName: string;
+}
+
+export interface ClassLeaderStudent {
+  id: string; userId: string; studentCode: string; fullName: string; email: string; phone?: string;
+  classId: string; className: string; facultyName: string; requiredWorkdays: number;
+  accumulatedWorkdays: number; completedWorkdays: number; missingWorkdays: number; hasEnoughWorkdays: boolean;
+  registration: null | {
+    id: string; status: RegistrationStatus; registeredAt: string; preliminaryStatus: PreliminaryReviewStatus;
+    preliminaryReviewedAt?: string; preliminaryReviewerName?: string;
+  };
+}
+
+export interface ClassLeaderEvent {
+  id: string; code: string; name: string; date: string; startTime: string; endTime: string; status: EventStatus;
+}
+
+export interface ClassLeaderDashboardData {
+  profile: ClassLeaderProfile;
+  totals: { students: number; sufficientStudents: number; insufficientStudents: number; upcomingEvents: number; registrations: number; preliminaryConfirmed: number };
+  insufficientStudents: ClassLeaderStudent[];
+  upcomingEvents: Array<{ id: string; code: string; name: string; date: string; status: EventStatus; registeredCount: number; maxCapacity: number; classRegistrationCount: number }>;
 }

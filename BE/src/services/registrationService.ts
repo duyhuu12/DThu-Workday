@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { BusinessError } from '../utils/errors.js';
-import { RegistrationStatus, AttendanceStatus } from '@prisma/client';
+import { RegistrationStatus, AttendanceStatus, PreliminaryReviewStatus } from '@prisma/client';
 
 function parseSelection(notes: string | null, event: any) {
   try {
@@ -41,6 +41,9 @@ function mapRegistration(r: any) {
     approvedAt: r.approvedAt ? r.approvedAt.toISOString() : undefined,
     approvedBy: r.approvedById ? 'Ban Tổ Chức' : undefined,
     rejectionReason: r.rejectionReason || undefined,
+    preliminaryStatus: r.preliminaryStatus?.toLowerCase?.() ?? 'unreviewed',
+    preliminaryReviewedAt: r.preliminaryReviewedAt?.toISOString?.() ?? undefined,
+    preliminaryReviewerName: r.preliminaryReviewer?.fullName || undefined,
     attendanceStatus:
       r.event?.attendances?.find((item: any) => item.studentId === r.studentId)?.status?.toLowerCase() ??
       'not_checked',
@@ -70,7 +73,7 @@ export async function listRegistrations(
 ) {
   const whereClause: any = {};
 
-  if (userRole === 'STUDENT' || userRole === 'student') {
+  if (['STUDENT', 'CLASS_LEADER', 'student', 'classleader'].includes(userRole)) {
     if (!currentStudentId) {
       throw new BusinessError(400, 'Không tìm thấy hồ sơ sinh viên');
     }
@@ -102,6 +105,7 @@ export async function listRegistrations(
           faculty: true,
         },
       },
+      preliminaryReviewer: true,
     },
     orderBy: {
       registeredAt: 'desc',
@@ -263,11 +267,15 @@ export async function createRegistration(
             status: RegistrationStatus.PENDING,
             registeredAt: new Date(),
             rejectionReason: null,
+            preliminaryStatus: PreliminaryReviewStatus.UNREVIEWED,
+            preliminaryReviewedAt: null,
+            preliminaryReviewedById: null,
             notes: selectionNotes,
           },
           include: {
             event: true,
             student: { include: { class: true, faculty: true } },
+            preliminaryReviewer: true,
           },
         })
       : await tx.registration.create({
@@ -280,6 +288,7 @@ export async function createRegistration(
           include: {
             event: true,
             student: { include: { class: true, faculty: true } },
+            preliminaryReviewer: true,
           },
         });
 
@@ -333,10 +342,16 @@ export async function cancelRegistration(regId: number, studentId: number) {
 
     const updated = await tx.registration.update({
       where: { id: regId },
-      data: { status: RegistrationStatus.CANCELLED },
+      data: {
+        status: RegistrationStatus.CANCELLED,
+        preliminaryStatus: PreliminaryReviewStatus.UNREVIEWED,
+        preliminaryReviewedAt: null,
+        preliminaryReviewedById: null,
+      },
       include: {
         event: true,
         student: { include: { class: true, faculty: true } },
+        preliminaryReviewer: true,
       },
     });
 

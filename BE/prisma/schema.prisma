@@ -8,6 +8,7 @@ datasource db {
 
 enum UserRole {
   STUDENT
+  CLASS_LEADER
   ORGANIZER
   ADMIN
   SUPER_ADMIN
@@ -35,6 +36,12 @@ enum EventStatus {
   COMPLETED
   REJECTED
   CANCELLED
+}
+
+enum PreliminaryReviewStatus {
+  UNREVIEWED
+  CONFIRMED
+  NEEDS_REVIEW
 }
 
 enum RegistrationStatus {
@@ -99,11 +106,14 @@ model User {
   role            UserRole        @default(STUDENT)
   status          AccountStatus   @default(ACTIVE)
   phone           String?         @db.VarChar(20)
+  managedClassId  Int?            @map("managed_class_id")
   lastLoginAt     DateTime?       @map("last_login_at")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   student         Student?
+  managedClass    Class?          @relation("ClassLeaders", fields: [managedClassId], references: [id], onDelete: SetNull)
+  preliminaryReviews Registration[] @relation("PreliminaryReviewer")
   activityLogs    ActivityLog[]
   notifications   Notification[]
   eventsManaged   WorkEvent[]     @relation("OrganizerEvents")
@@ -131,6 +141,7 @@ model Class {
 
   faculty    Faculty   @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   students   Student[]
+  classLeaders User[] @relation("ClassLeaders")
 
   @@index([facultyId])
   @@map("classes")
@@ -218,12 +229,17 @@ model Registration {
   approvedById     Int?               @map("approved_by_id")
   rejectionReason  String?            @map("rejection_reason") @db.Text
   notes            String?            @db.Text
+  preliminaryStatus PreliminaryReviewStatus @default(UNREVIEWED) @map("preliminary_status")
+  preliminaryReviewedAt DateTime?      @map("preliminary_reviewed_at")
+  preliminaryReviewedById Int?         @map("preliminary_reviewed_by_id")
 
   event            WorkEvent          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   student          Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  preliminaryReviewer User?            @relation("PreliminaryReviewer", fields: [preliminaryReviewedById], references: [id], onDelete: SetNull)
 
   @@unique([eventId, studentId])
   @@index([studentId])
+  @@index([preliminaryReviewedById])
   @@map("registrations")
 }
 

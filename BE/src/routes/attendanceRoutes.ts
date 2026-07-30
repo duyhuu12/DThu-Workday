@@ -12,7 +12,7 @@ import { authenticate, authorize } from '../middlewares/auth.js';
 const router = Router();
 const managers = ['ORGANIZER', 'ADMIN', 'SUPER_ADMIN'] as const;
 
-router.post('/student/scan', authenticate, authorize(['STUDENT']), scanQr);
+router.post('/student/scan', authenticate, authorize(['STUDENT', 'CLASS_LEADER']), scanQr);
 router.get('/event/:eventId', authenticate, authorize([...managers]), getAttendanceByEvent);
 router.post('/event/:eventId/qr', authenticate, authorize([...managers]), generateQr);
 router.put('/event/:eventId/bulk', authenticate, authorize([...managers]), bulkUpdateAttendance);

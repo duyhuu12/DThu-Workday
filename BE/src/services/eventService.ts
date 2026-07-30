@@ -1,6 +1,7 @@
 import { EventStatus, UserRole, WorkShift } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { BusinessError } from '../utils/errors.js';
+import { isStudentLikeRole } from '../utils/roles.js';
 
 function parseJsonArray(value: string | null): string[] {
   try {
@@ -128,7 +129,7 @@ export async function getAllEvents(
 
   const where: any = {};
   if (viewer?.role === UserRole.ORGANIZER) where.organizerId = viewer.id;
-  if (viewer?.role === UserRole.STUDENT) {
+  if (viewer && isStudentLikeRole(viewer.role)) {
     where.status = { in: [EventStatus.APPROVED, EventStatus.OPEN, EventStatus.ONGOING, EventStatus.COMPLETED, EventStatus.CANCELLED] };
   } else if (filters.status && filters.status !== 'all') {
     where.status = String(filters.status).toUpperCase() as EventStatus;
@@ -138,7 +139,7 @@ export async function getAllEvents(
   const dbEvents = await prisma.workEvent.findMany({ where, include: { organizer: true }, orderBy: { date: 'desc' } });
   let result = dbEvents.map(mapEvent);
 
-  if (viewer?.role === UserRole.STUDENT && viewer.studentId) {
+  if (viewer && isStudentLikeRole(viewer.role) && viewer.studentId) {
     const student = await prisma.student.findUnique({ where: { id: viewer.studentId } });
     if (student) {
       result = result.filter((event) => {

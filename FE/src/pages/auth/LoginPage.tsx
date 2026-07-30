@@ -84,14 +84,14 @@ function LoginInner() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
+    <Card className="w-full max-w-md border-white/30 dark:border-white/10 bg-white/70 dark:bg-slate-900/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] ring-1 ring-white/40 dark:ring-white/10 rounded-3xl">
       <CardHeader className="space-y-3 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
           <GraduationCap className="h-7 w-7" />
         </div>
         <div>
-          <CardTitle className="text-2xl">DThU Workday</CardTitle>
-          <CardDescription className="mt-1">
+          <CardTitle className="text-2xl font-bold text-foreground">Đăng Ký Lao Động</CardTitle>
+          <CardDescription className="mt-1 font-medium text-muted-foreground">
             Đại học Đồng Tháp
           </CardDescription>
         </div>
@@ -100,15 +100,15 @@ function LoginInner() {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="identifier">Email hoặc mã sinh viên</Label>
+            <Label htmlFor="identifier" className="text-sm font-semibold">Email hoặc mã sinh viên</Label>
             <div className="relative">
               <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="identifier"
                 type="text"
                 autoComplete="username"
-                placeholder="student@dthu.edu.vn hoặc 5720..."
-                className="pl-9"
+                placeholder="student@dthu.edu.vn hoặc 00234..."
+                className="pl-9 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-white/40 dark:border-white/10 focus:bg-white/90 dark:focus:bg-slate-800/90 transition-all duration-200"
                 {...register('identifier')}
                 aria-invalid={!!errors.identifier}
               />
@@ -122,10 +122,10 @@ function LoginInner() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Mật khẩu</Label>
+              <Label htmlFor="password" className="text-sm font-semibold">Mật khẩu</Label>
               <Link
                 href="/forgot-password"
-                className="text-xs text-primary hover:underline"
+                className="text-xs text-primary hover:underline font-medium"
               >
                 Quên mật khẩu?
               </Link>
@@ -137,7 +137,7 @@ function LoginInner() {
                 type={show ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="••••••"
-                className="pl-9 pr-9"
+                className="pl-9 pr-9 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-white/40 dark:border-white/10 focus:bg-white/90 dark:focus:bg-slate-800/90 transition-all duration-200"
                 {...register('password')}
                 aria-invalid={!!errors.password}
               />
@@ -161,7 +161,7 @@ function LoginInner() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full shadow-lg shadow-primary/25 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700 transition-all duration-200" disabled={loading}>
             {loading ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
             ) : (
@@ -173,7 +173,7 @@ function LoginInner() {
         </form>
 
         {showDemoAccounts && (
-          <div className="mt-6 rounded-lg border bg-muted/30 p-4">
+          <div className="mt-6 rounded-2xl border border-white/30 dark:border-white/10 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Tài khoản demo
             </p>
@@ -186,7 +186,7 @@ function LoginInner() {
                     setValue('identifier', account.email);
                     setValue('password', demoPassword);
                   }}
-                  className="flex items-center justify-between rounded-md border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary hover:bg-primary/5"
+                  className="flex items-center justify-between rounded-xl border border-white/30 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 px-3 py-2 text-left text-sm transition-all duration-200 hover:border-primary hover:bg-primary/10"
                 >
                   <div>
                     <p className="font-medium text-foreground">
@@ -196,7 +196,7 @@ function LoginInner() {
                       {account.email}
                     </p>
                   </div>
-                  <span className="text-xs text-primary">Dùng</span>
+                  <span className="text-xs font-semibold text-primary">Dùng</span>
                 </button>
               ))}
             </div>
@@ -210,8 +210,52 @@ function LoginInner() {
 export default function LoginPage() {
   return (
     <GuestOnly>
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-        <LoginInner />
+      <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-slate-950">
+        {/* Campus Background Image for Fullscreen Glassmorphism Context */}
+        <img
+          src="/dthu.jpg"
+          alt="Đại học Đồng Tháp"
+          className="absolute inset-0 h-full w-full object-cover object-center transition-all duration-1000 scale-105"
+        />
+        {/* Smooth Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-900/65 to-slate-950/80 backdrop-blur-[2px]" />
+
+        {/* Outer Grid Layout */}
+        <div className="relative z-10 flex w-full min-h-screen">
+          {/* Left Column: Branding Text (Visible on lg) */}
+          <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-white">Đại học Đồng Tháp</h3>
+                <p className="text-xs text-white/70">Dong Thap University</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 max-w-lg">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-white/90 backdrop-blur-md border border-white/15">
+                ✦ Cổng Quản Lý Ngày Công
+              </span>
+              <h1 className="text-4xl font-extrabold tracking-tight text-white leading-tight">
+                Quản lý & Đăng ký ngày công lao động trực quan
+              </h1>
+              <p className="text-sm text-white/80 leading-relaxed">
+                Hệ thống hỗ trợ sinh viên và cán bộ theo dõi chỉ tiêu, đăng ký tham gia sự kiện và cập nhật lịch làm việc dễ dàng.
+              </p>
+            </div>
+
+            <p className="text-xs text-white/50">
+              © 2026 Đại học Đồng Tháp. All rights reserved.
+            </p>
+          </div>
+
+          {/* Right Column: Liquid Glass Form */}
+          <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
+            <LoginInner />
+          </div>
+        </div>
       </div>
     </GuestOnly>
   );

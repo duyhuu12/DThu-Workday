@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { EVENT_STATUS_LABELS, EVENT_STATUS_VARIANTS, REG_STATUS_LABELS, REG_STATUS_VARIANTS } from '@/lib/constants';
 import { formatDate } from '@/lib/format';
 
-const PIE_COLORS = ['#hsl(var(--primary))', '#hsl(var(--secondary))', '#f59e0b', '#hsl(var(--success))', '#64748b', '#ef4444'];
+const PIE_COLORS = ['hsl(var(--primary))', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
 
 export default function OrganizerDashboard() {
   const { events, registrations, currentUser } = useAppStore();

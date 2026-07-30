@@ -8,6 +8,36 @@ import { toApiRole } from '../utils/roles.js';
 const JWT_SECRET = requiredEnv('JWT_SECRET');
 const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || '8h';
 
+const userInclude = {
+  student: {
+    include: {
+      class: true,
+      faculty: true,
+    },
+  },
+  managedClass: {
+    include: {
+      faculty: true,
+    },
+  },
+} as const;
+
+function mapAuthUser(user: any) {
+  return {
+    id: String(user.id),
+    email: user.email,
+    name: user.fullName,
+    role: toApiRole(user.role),
+    phone: user.phone || undefined,
+    status: user.status.toLowerCase(),
+    createdAt: user.createdAt.toISOString(),
+    lastLogin: user.lastLoginAt?.toISOString(),
+    studentCode: user.student?.studentCode || undefined,
+    managedClassId: user.managedClassId ? String(user.managedClassId) : undefined,
+    managedClassName: user.managedClass?.name || undefined,
+  };
+}
+
 export async function loginUser(identifierInput: string, password: string) {
   const identifier = String(identifierInput ?? '').trim();
 
@@ -28,14 +58,7 @@ export async function loginUser(identifierInput: string, password: string) {
         },
       ],
     },
-    include: {
-      student: {
-        include: {
-          class: true,
-          faculty: true,
-        },
-      },
-    },
+    include: userInclude,
   });
 
   if (!user) {
@@ -58,14 +81,7 @@ export async function loginUser(identifierInput: string, password: string) {
   const updatedUser = await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
-    include: {
-      student: {
-        include: {
-          class: true,
-          faculty: true,
-        },
-      },
-    },
+    include: userInclude,
   });
 
   await prisma.activityLog.create({
@@ -78,11 +94,12 @@ export async function loginUser(identifierInput: string, password: string) {
   });
 
   const payload = {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    fullName: user.fullName,
-    studentId: user.student?.id || null,
+    id: updatedUser.id,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    fullName: updatedUser.fullName,
+    studentId: updatedUser.student?.id || null,
+    managedClassId: updatedUser.managedClassId || null,
   };
 
   const token = jwt.sign(payload, JWT_SECRET, {
@@ -91,39 +108,108 @@ export async function loginUser(identifierInput: string, password: string) {
 
   return {
     token,
-    user: {
-      id: String(user.id),
-      email: user.email,
-      name: user.fullName,
-      role: toApiRole(user.role),
-      phone: user.phone || undefined,
-      status: user.status.toLowerCase(),
-      createdAt: user.createdAt.toISOString(),
-      lastLogin: updatedUser.lastLoginAt?.toISOString(),
-      studentCode: updatedUser.student?.studentCode || undefined,
-    },
+    user: mapAuthUser(updatedUser),
   };
 }
 
 export async function getUserById(userId: number) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { student: true },
+    include: userInclude,
   });
 
   if (!user) {
     throw new BusinessError(404, 'Không tìm thấy người dùng');
   }
 
-  return {
-    id: String(user.id),
-    email: user.email,
-    name: user.fullName,
-    role: toApiRole(user.role),
-    phone: user.phone || undefined,
-    status: user.status.toLowerCase(),
-    createdAt: user.createdAt.toISOString(),
-    lastLogin: user.lastLoginAt?.toISOString(),
-    studentCode: user.student?.studentCode || undefined,
-  };
+  return mapAuthUser(user);
+}
+
+export async function updateOwnProfile(userId: number, input: any) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    include: userInclude,
+  });
+
+  if (!existing) {
+    throw new BusinessError(404, 'Không tìm thấy người dùng');
+  }
+
+  const fullName = String(input?.name ?? input?.fullName ?? existing.fullName).trim();
+  const email = String(input?.email ?? existing.email).trim().toLowerCase();
+  const phoneInput = input?.phone;
+  const phone = phoneInput === undefined
+    ? existing.phone
+    : (String(phoneInput).trim() || null);
+
+  if (fullName.length < 2 || fullName.length > 150) {
+    throw new BusinessError(400, 'Họ tên phải có từ 2 đến 150 ký tự');
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 150) {
+    throw new BusinessError(400, 'Email không hợp lệ');
+  }
+
+  if (phone && phone.length > 20) {
+    throw new BusinessError(400, 'Số điện thoại tối đa 20 ký tự');
+  }
+
+  const duplicateUser = await prisma.user.findFirst({
+    where: { email, NOT: { id: userId } },
+    select: { id: true },
+  });
+  if (duplicateUser) {
+    throw new BusinessError(409, 'Email đã được tài khoản khác sử dụng');
+  }
+
+  if (existing.student) {
+    const duplicateStudent = await prisma.student.findFirst({
+      where: { email, NOT: { id: existing.student.id } },
+      select: { id: true },
+    });
+    if (duplicateStudent) {
+      throw new BusinessError(409, 'Email đã được hồ sơ sinh viên khác sử dụng');
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (existing.student) {
+      await tx.student.update({
+        where: { id: existing.student.id },
+        data: {
+          fullName,
+          email,
+          phone,
+        },
+      });
+    }
+
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: {
+        fullName,
+        email,
+        phone,
+      },
+      include: userInclude,
+    });
+
+    await tx.activityLog.create({
+      data: {
+        userId,
+        action: 'Cập nhật hồ sơ cá nhân',
+        affectedItem: `${fullName} (${email})`,
+        oldValue: JSON.stringify({
+          name: existing.fullName,
+          email: existing.email,
+          phone: existing.phone,
+        }),
+        newValue: JSON.stringify({ name: fullName, email, phone }),
+      },
+    });
+
+    return user;
+  });
+
+  return mapAuthUser(updated);
 }

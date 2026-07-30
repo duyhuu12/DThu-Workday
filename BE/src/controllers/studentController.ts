@@ -9,7 +9,7 @@ function requireStudentId(req: AuthRequest, res: Response): number | null {
     return null;
   }
 
-  if (req.user.role !== 'STUDENT' || !req.user.studentId) {
+  if (!['STUDENT', 'CLASS_LEADER'].includes(req.user.role) || !req.user.studentId) {
     res.status(403).json({ success: false, message: 'Chức năng chỉ dành cho sinh viên' });
     return null;
   }

@@ -104,7 +104,7 @@ export async function generateQr(req: AuthRequest, res: Response) {
 }
 
 export async function scanQr(req: AuthRequest, res: Response) {
-  if (!req.user || req.user.role !== 'STUDENT' || !req.user.studentId) {
+  if (!req.user || !['STUDENT', 'CLASS_LEADER'].includes(req.user.role) || !req.user.studentId) {
     return void res.status(403).json({
       success: false,
       message: 'Chức năng chỉ dành cho sinh viên',

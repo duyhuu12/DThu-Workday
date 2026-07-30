@@ -32,7 +32,7 @@ export async function getRegistrations(req: AuthRequest, res: Response) {
 }
 
 export async function registerEvent(req: AuthRequest, res: Response) {
-  if (!req.user || req.user.role !== 'STUDENT') {
+  if (!req.user || !['STUDENT', 'CLASS_LEADER'].includes(req.user.role)) {
     res.status(403).json({ success: false, message: 'Chỉ sinh viên mới được đăng ký sự kiện' });
     return;
   }
@@ -70,7 +70,7 @@ export async function registerEvent(req: AuthRequest, res: Response) {
 }
 
 export async function cancelRegistration(req: AuthRequest, res: Response) {
-  if (!req.user || req.user.role !== 'STUDENT') {
+  if (!req.user || !['STUDENT', 'CLASS_LEADER'].includes(req.user.role)) {
     res.status(403).json({ success: false, message: 'Hành động không hợp lệ' });
     return;
   }

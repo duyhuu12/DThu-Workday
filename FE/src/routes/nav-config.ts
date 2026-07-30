@@ -1,6 +1,28 @@
 import type { UserRole } from '@/types';
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, CalendarDays, ClipboardList, CalendarRange, Award, MessageSquareWarning, Bell, User, FolderKanban, CalendarPlus, Users, BarChart3, ShieldCheck, Building2, GraduationCap, Settings, History, ShieldAlert, QrCode } from 'lucide-react';
+import {
+  LayoutDashboard,
+  CalendarDays,
+  ClipboardList,
+  CalendarRange,
+  Award,
+  MessageSquareWarning,
+  Bell,
+  User,
+  FolderKanban,
+  CalendarPlus,
+  Users,
+  BarChart3,
+  ShieldCheck,
+  Building2,
+  GraduationCap,
+  Settings,
+  History,
+  ShieldAlert,
+  QrCode,
+  Send,
+  UserCheck,
+} from 'lucide-react';
 
 export interface NavItem { label: string; href: string; icon: LucideIcon; exact?: boolean; }
 export interface NavSection { title?: string; items: NavItem[]; }
@@ -18,6 +40,27 @@ export const NAV_CONFIG: Record<UserRole, NavSection[]> = {
     { label: 'Thông báo', href: '/student/notifications', icon: Bell, exact: true },
     { label: 'Hồ sơ', href: '/profile', icon: User, exact: true },
   ]}],
+  classleader: [
+    { title: 'Quản lý lớp', items: [
+      { label: 'Tổng quan lớp', href: '/classleader/dashboard', icon: LayoutDashboard, exact: true },
+      { label: 'Sinh viên trong lớp', href: '/classleader/students', icon: Users, exact: true },
+      { label: 'Theo dõi đăng ký', href: '/classleader/registrations', icon: UserCheck, exact: true },
+      { label: 'Nhắc ngày công', href: '/classleader/reminders', icon: Award, exact: true },
+      { label: 'Gửi thông báo lớp', href: '/classleader/announcements', icon: Send, exact: true },
+      { label: 'Báo cáo lớp', href: '/classleader/reports', icon: BarChart3, exact: true },
+    ]},
+    { title: 'Cá nhân', items: [
+      { label: 'Sự kiện ngày công', href: '/student/work-events', icon: CalendarDays, exact: true },
+      { label: 'Đăng ký của tôi', href: '/student/my-registrations', icon: ClipboardList, exact: true },
+      { label: 'Lịch làm việc', href: '/student/schedule', icon: CalendarRange, exact: true },
+      { label: 'Điểm danh QR', href: '/student/qr-attendance', icon: QrCode, exact: true },
+      { label: 'Lịch sử tham gia', href: '/student/history', icon: History, exact: true },
+      { label: 'Ngày công của tôi', href: '/student/work-credits', icon: Award, exact: true },
+      { label: 'Khiếu nại của tôi', href: '/student/complaints', icon: MessageSquareWarning, exact: true },
+      { label: 'Thông báo của tôi', href: '/classleader/notifications', icon: Bell, exact: true },
+      { label: 'Hồ sơ', href: '/profile', icon: User, exact: true },
+    ]},
+  ],
   organizer: [{ items: [
     { label: 'Tổng quan', href: '/organizer/dashboard', icon: LayoutDashboard, exact: true },
     { label: 'Sự kiện', href: '/organizer/events', icon: FolderKanban, exact: true },
@@ -30,11 +73,13 @@ export const NAV_CONFIG: Record<UserRole, NavSection[]> = {
     { label: 'Duyệt sự kiện', href: '/admin/event-approvals', icon: ShieldCheck, exact: true },
     { label: 'Sự kiện', href: '/admin/events', icon: FolderKanban, exact: true },
     { label: 'Sinh viên', href: '/admin/students', icon: Users, exact: true },
+    { label: 'Cán bộ lớp', href: '/admin/class-leaders', icon: UserCheck, exact: true },
     { label: 'Lớp học', href: '/admin/classes', icon: GraduationCap, exact: true },
     { label: 'Khoa', href: '/admin/faculties', icon: Building2, exact: true },
     { label: 'Ngày công', href: '/admin/work-credits', icon: Award, exact: true },
     { label: 'Khiếu nại', href: '/admin/complaints', icon: MessageSquareWarning, exact: true },
     { label: 'Báo cáo', href: '/admin/reports', icon: BarChart3, exact: true },
+    { label: 'Cài đặt hệ thống', href: '/admin/settings', icon: Settings, exact: true },
     { label: 'Nhật ký hoạt động', href: '/admin/activity-logs', icon: History, exact: true },
     { label: 'Hồ sơ', href: '/profile', icon: User, exact: true },
   ]}],

@@ -27,14 +27,54 @@ export default function ClassesPage() {
   function openAdd() { setEditing(null); setForm({ name: '', code: '', facultyId: faculties[0]?.id ?? '', schoolYear: '2024-2028' }); setOpen(true); }
   function openEdit(item: Class) { setEditing(item); setForm({ name: item.name, code: item.code, facultyId: item.facultyId, schoolYear: item.schoolYear }); setOpen(true); }
   async function handleSave() {
-    if (!form.name.trim() || !form.code.trim() || !form.facultyId) { toast({ title: 'Vui lòng điền tên, mã lớp và khoa', variant: 'destructive' }); return; }
+    if (!form.name.trim() || !form.code.trim() || !form.facultyId) {
+      toast({ title: 'Vui lòng điền tên, mã lớp và khoa', variant: 'destructive' });
+      return;
+    }
+
+    const isCodeDuplicate = classes.some(
+      (c) => c.code.trim().toLowerCase() === form.code.trim().toLowerCase() && c.id !== editing?.id
+    );
+    if (isCodeDuplicate) {
+      toast({
+        title: 'Mã lớp đã tồn tại',
+        description: `Mã lớp "${form.code.trim()}" đã có trong hệ thống. Vui lòng chọn mã khác.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const isNameDuplicate = classes.some(
+      (c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase() && c.id !== editing?.id
+    );
+    if (isNameDuplicate) {
+      toast({
+        title: 'Tên lớp đã tồn tại',
+        description: `Tên lớp "${form.name.trim()}" đã có trong hệ thống. Vui lòng chọn tên khác.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      if (editing) { await updateClass(editing.id, form); toast({ title: 'Đã cập nhật lớp trong database' }); }
-      else { await addClass(form); toast({ title: 'Đã thêm lớp vào database' }); }
+      if (editing) {
+        await updateClass(editing.id, form);
+        toast({ title: 'Đã cập nhật lớp thành công' });
+      } else {
+        await addClass(form);
+        toast({ title: 'Đã thêm lớp thành công' });
+      }
       setOpen(false);
-    } catch (error) { toast({ title: 'Không thể lưu lớp', description: error instanceof Error ? error.message : 'Có lỗi xảy ra', variant: 'destructive' }); }
-    finally { setSaving(false); }
+    } catch (error) {
+      toast({
+        title: 'Không thể lưu lớp',
+        description: error instanceof Error ? error.message : 'Có lỗi xảy ra',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
   }
   async function handleDelete() {
     if (!deleteTarget) return;

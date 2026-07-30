@@ -37,7 +37,7 @@ function mapComplaint(c: any) {
 export async function listComplaints(userRole: string, currentStudentId: number | null) {
   let whereClause: any = {};
 
-  if (userRole === 'STUDENT' || userRole === 'student') {
+  if (['STUDENT', 'CLASS_LEADER', 'student', 'classleader'].includes(userRole)) {
     if (!currentStudentId) {
       throw new BusinessError(400, 'Không tìm thấy hồ sơ sinh viên');
     }

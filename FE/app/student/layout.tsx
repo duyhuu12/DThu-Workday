@@ -1,2 +1,2 @@
 import { RoleDashboardLayout } from '@/components/layout/RoleDashboardLayout';
-export default function Layout({ children }: { children: React.ReactNode }) { return <RoleDashboardLayout roles={['student']}>{children}</RoleDashboardLayout>; }
+export default function Layout({ children }: { children: React.ReactNode }) { return <RoleDashboardLayout roles={['student', 'classleader']}>{children}</RoleDashboardLayout>; }

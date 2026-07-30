@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '@prisma/client';
 import { requiredEnv } from '../config/env.js';
+import { prisma } from '../config/prisma.js';
 import { normalizeRole } from '../utils/roles.js';
 
 export interface AuthRequest extends Request {
@@ -11,12 +12,13 @@ export interface AuthRequest extends Request {
     role: UserRole;
     fullName: string;
     studentId?: number | null;
+    managedClassId?: number | null;
   };
 }
 
 const JWT_SECRET = requiredEnv('JWT_SECRET');
 
-export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
+export async function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập' });
@@ -25,13 +27,32 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as { id?: unknown };
+    const userId = Number(decoded.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      res.status(401).json({ success: false, message: 'Phiên đăng nhập không hợp lệ' });
+      return;
+    }
+
+    // Read role and class assignment from MySQL on every request so an admin
+    // assignment takes effect immediately without relying on stale JWT fields.
+    const databaseUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { student: { select: { id: true } } },
+    });
+
+    if (!databaseUser || databaseUser.status !== 'ACTIVE') {
+      res.status(401).json({ success: false, message: 'Tài khoản không còn hoạt động' });
+      return;
+    }
+
     req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: normalizeRole(decoded.role),
-      fullName: decoded.fullName,
-      studentId: decoded.studentId,
+      id: databaseUser.id,
+      email: databaseUser.email,
+      role: normalizeRole(databaseUser.role),
+      fullName: databaseUser.fullName,
+      studentId: databaseUser.student?.id ?? null,
+      managedClassId: databaseUser.managedClassId ?? null,
     };
     next();
   } catch (error) {

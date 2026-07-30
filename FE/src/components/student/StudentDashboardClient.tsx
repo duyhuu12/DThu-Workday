@@ -14,9 +14,7 @@ import {
   YAxis,
 } from 'recharts';
 import {
-  ArrowRight,
   Award,
-  Bell,
   CalendarCheck2,
   CalendarDays,
   CheckCircle2,
@@ -104,9 +102,6 @@ export default function StudentDashboardClient() {
         isAfter(parseISO(event.registrationClose), new Date()),
     )
     .slice(0, 3);
-  const myNotifs = notifications
-    .filter((notification) => notification.userId === student?.userId)
-    .slice(0, 5);
 
   const chartData = useMemo(() => {
     const months: Array<{ month: string; ngayCong: number }> = [];
@@ -275,79 +270,41 @@ export default function StudentDashboardClient() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Thông báo gần đây</CardTitle>
-            <Link href="/student/notifications" className="text-xs text-primary hover:underline">
+        <Card className="flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-base">Sự kiện đang mở đăng ký</CardTitle>
+            <Link href="/student/work-events" className="text-xs text-primary hover:underline">
               Xem tất cả
             </Link>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {myNotifs.length === 0 ? (
+          <CardContent className="space-y-3 flex-1">
+            {openEvents.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-center">
-                <Bell className="mb-2 h-7 w-7 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">Không có thông báo</p>
+                <CalendarDays className="mb-2 h-7 w-7 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">Không có sự kiện mở</p>
               </div>
             ) : (
-              myNotifs.map((notification) => (
-                <div key={notification.id} className="rounded-lg border p-3">
-                  <p className="text-sm font-medium text-foreground">{notification.title}</p>
-                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{notification.message}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground/70">
-                    {format(parseISO(notification.createdAt), 'dd/MM/yyyy', { locale: vi })}
-                  </p>
-                </div>
+              openEvents.map((event) => (
+                <Link key={event.id} href={`/student/work-events/${event.id}`} className="block">
+                  <div className="rounded-lg border p-3 transition-all hover:border-primary/40 hover:shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold leading-tight text-foreground text-sm line-clamp-1">{event.name}</h4>
+                      <StatusBadge label={EVENT_STATUS_LABELS[event.status]} variant={EVENT_STATUS_VARIANTS[event.status]} />
+                    </div>
+                    <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <p className="flex items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5" /> {formatDate(event.date)}
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" /> {event.startTime} - {event.endTime} ({SHIFT_LABELS[event.shift]})
+                      </p>
+                    </div>
+                  </div>
+                </Link>
               ))
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">Sự kiện đang mở đăng ký</h3>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/student/work-events">
-              Xem tất cả <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-        {openEvents.length === 0 ? (
-          <EmptyState icon={CalendarDays} title="Không có sự kiện mở" />
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {openEvents.map((event) => {
-              const percentage = event.maxCapacity > 0
-                ? Math.round((event.registeredCount / event.maxCapacity) * 100)
-                : 0;
-              return (
-                <Link key={event.id} href={`/student/work-events/${event.id}`}>
-                  <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
-                    <CardContent className="space-y-3 p-5">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-semibold leading-tight text-foreground">{event.name}</h4>
-                        <StatusBadge label={EVENT_STATUS_LABELS[event.status]} variant={EVENT_STATUS_VARIANTS[event.status]} />
-                      </div>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {formatDate(event.date)}</p>
-                        <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> {event.startTime} - {event.endTime} ({SHIFT_LABELS[event.shift]})</p>
-                        <p className="truncate">{event.location}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">{event.registeredCount}/{event.maxCapacity}</span>
-                          <span className="font-medium">{percentage}%</span>
-                        </div>
-                        <Progress value={percentage} className="h-1.5" />
-                      </div>
-                      <p className="text-xs text-muted-foreground">Hạn: {formatDateTime(event.registrationClose)}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );

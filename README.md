@@ -1,233 +1,119 @@
-# DThU Workday — FE/BE Enhanced
+# Lao Động Sinh Viên — DThU Workday
 
-Hệ thống quản lý ngày công sinh viên, được tách rõ thành Frontend và Backend nhưng giữ nguyên layout, route và chức năng hiện có.
+Hệ thống quản lý sự kiện lao động, đăng ký tham gia, điểm danh và ngày công sinh viên của Trường Đại học Đồng Tháp.
 
-## Cấu trúc
+## Kiến trúc
 
 ```text
 .
-├── FE/       Next.js + TypeScript + Tailwind
-├── BE/       Express + TypeScript + Prisma + MySQL
-├── scripts/
-├── START_LOCAL.ps1
-├── CHECK_PROJECT.ps1
-└── docker-compose.yml
+├── FE/                         Next.js 13, React, TypeScript, Tailwind CSS
+├── BE/                         Express, TypeScript, Prisma, MySQL
+│   ├── prisma/schema.prisma    Mô hình dữ liệu
+│   ├── prisma/migrations/      Lịch sử migration
+│   ├── src/                    API và nghiệp vụ backend
+│   └── uploads/                Ảnh được tải lên máy chủ
+├── scripts/dev.mjs             Khởi động frontend và backend
+├── QA_TEST_MATRIX.md           Ma trận kiểm thử
+└── PROJECT_AUDIT_REPORT.md     Báo cáo rà soát kỹ thuật
 ```
 
-## Yêu cầu chạy local
+Frontend mặc định chạy tại `http://localhost:3000`. Backend chạy tại `http://localhost:8080`, API health check tại `http://localhost:8080/api/health`.
+
+## Vai trò
+
+- Sinh viên: xem và đăng ký sự kiện, xem lịch, điểm danh QR, theo dõi ngày công và gửi khiếu nại.
+- Người phụ trách: tạo sự kiện, quản lý sinh viên đăng ký, mở phiên điểm danh và xác nhận kết quả.
+- Quản trị viên: duyệt sự kiện, quản lý sinh viên, khoa, lớp, ngày công, báo cáo và khiếu nại.
+- Super Admin: quản lý tài khoản, vai trò, cấu hình hệ thống và nhật ký hoạt động.
+
+Hệ thống không còn vai trò Cán bộ lớp.
+
+## Luồng sự kiện
+
+```text
+Chờ duyệt → Đã duyệt → Đang đăng ký → Sắp diễn ra
+                                            ↓
+                                      Đang diễn ra
+                                            ↓
+                                      Đã hoàn thành
+```
+
+Sự kiện chỉ chuyển sang `Đang diễn ra` khi người phụ trách mở phiên check-in đúng ngày và trong khung giờ cho phép. Kết quả chỉ được xác nhận sau giờ kết thúc.
+
+## Yêu cầu môi trường
 
 - Node.js 20 trở lên.
-- MySQL đang chạy tại `127.0.0.1:3306`.
-- Database `dthu_workday` và user MySQL ứng dụng.
+- npm.
+- MySQL 8 hoặc phiên bản MariaDB tương thích.
+- Một database và tài khoản MySQL có quyền chạy migration.
 
-## 1. Tạo cấu hình
+## Cài đặt
 
-### Backend
-
-```powershell
-Copy-Item .\BE\.env.example .\BE\.env
-notepad .\BE\.env
-```
-
-Các giá trị quan trọng:
-
-```env
-DATABASE_URL="mysql://dthu_app:YOUR_APP_PASSWORD@127.0.0.1:3306/dthu_workday"
-DATABASE_HOST=127.0.0.1
-DATABASE_PORT=3306
-DATABASE_USER=dthu_app
-DATABASE_PASSWORD=YOUR_APP_PASSWORD
-DATABASE_NAME=dthu_workday
-JWT_SECRET=CHUOI_BI_MAT_DAI_HON_32_KY_TU
-```
-
-`YOUR_APP_PASSWORD` là mật khẩu của tài khoản MySQL `dthu_app`. Phần mật khẩu trong `DATABASE_URL` phải URL-encode nếu có ký tự đặc biệt.
-
-### Frontend
+Tại thư mục chứa file `package.json` gốc:
 
 ```powershell
-Copy-Item .\FE\.env.example .\FE\.env.local
+npm.cmd run install:all
+Copy-Item BE/.env.example BE/.env
 ```
+
+Cập nhật các giá trị trong `BE/.env`, đặc biệt:
+
+- `DATABASE_URL` dành cho Prisma CLI.
+- Nhóm biến `DATABASE_*` dành cho backend khi chạy.
+- `JWT_SECRET` tối thiểu 32 ký tự ngẫu nhiên.
+- Nhóm biến `SMTP_*` để gửi OTP quên mật khẩu.
+
+Nếu cần cấu hình riêng URL backend cho frontend, tạo `FE/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api
-NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=false
-NEXT_PUBLIC_DEMO_PASSWORD=123456
 ```
 
-Mặc định danh sách tài khoản demo bị ẩn. Chỉ bật `NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=true` trên môi trường kiểm thử nội bộ.
-
-## 2. Cài package
+Khởi tạo Prisma và cập nhật database:
 
 ```powershell
-npm run install:all
+npm.cmd run prisma:generate
+npm.cmd run prisma:migrate
 ```
 
-## 3. Prisma
+Khởi động toàn hệ thống:
 
 ```powershell
-npm run prisma:generate
-npm run prisma:migrate
+npm.cmd run dev
 ```
 
-Chỉ tạo lại dữ liệu demo khi database không có dữ liệu quan trọng:
+## Các lệnh kiểm tra
 
 ```powershell
-# Trong BE/.env
-ALLOW_DATABASE_SEED=true
-SEED_DEMO_PASSWORD=123456
-
-npm run prisma:seed
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd run prisma:generate
+npm.cmd run prisma:migrate
 ```
 
-Sau seed, đổi lại:
-
-```env
-ALLOW_DATABASE_SEED=false
-```
-
-## 4. Chạy hệ thống
-
-### Cách nhanh
+Kiểm tra riêng frontend:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\START_LOCAL.ps1
+npm.cmd run lint --prefix FE
+npm.cmd run typecheck --prefix FE
 ```
 
-### Chạy thủ công bằng một terminal
+Kiểm tra riêng backend:
 
 ```powershell
-npm run dev
+npm.cmd run typecheck --prefix BE
+npm.cmd run prisma:status --prefix BE
 ```
 
-### Chạy riêng
+## Lưu ý dữ liệu
 
-```powershell
-npm run dev --prefix BE
-npm run dev --prefix FE
-```
+- Không xóa sự kiện trực tiếp trong MySQL. Đăng ký và điểm danh liên quan có thể bị xóa theo khóa ngoại `CASCADE`.
+- Không chạy seed trên database đang sử dụng nếu chưa sao lưu.
+- `ALLOW_DATABASE_SEED` phải được bật rõ ràng trước khi tạo lại dữ liệu mẫu.
+- Ảnh đại diện được lưu trong `BE/uploads/`; database chỉ lưu đường dẫn `avatarUrl`.
+- Nhật ký hoạt động nên được giữ để Super Admin truy vết thao tác.
 
-Truy cập:
+## Tài liệu còn sử dụng
 
-```text
-Frontend: http://localhost:3000
-Backend:  http://localhost:8080
-Health:   http://localhost:8080/api/health
-```
-
-## 5. Kiểm tra cấu trúc và kết nối
-
-```powershell
-.\CHECK_PROJECT.ps1
-```
-
-Kiểm tra build:
-
-```powershell
-npm run typecheck
-npm run build
-```
-
-## 6. Điểm danh sinh viên
-
-1. Organizer mở sự kiện.
-2. Vào **Điểm danh**.
-3. Danh sách chỉ lấy các đăng ký đã duyệt từ MySQL.
-4. Có thể check-in, check-out, đánh dấu vắng hoặc cập nhật hàng loạt.
-5. Vào **Kết quả** và chọn **Xác nhận kết quả**.
-6. Backend ghi ngày công cho sinh viên có mặt.
-7. Nút **Xuất CSV** tải danh sách điểm danh.
-
-## 7. Xuất báo cáo
-
-- Admin → Báo cáo → **Xuất CSV**: tổng hợp ngày công sinh viên.
-- Organizer → Báo cáo → **Xuất CSV**: tổng hợp các sự kiện phụ trách.
-- Organizer → Kết quả/Điểm danh → **Xuất CSV**: danh sách điểm danh sự kiện.
-
-File có UTF-8 BOM nên có thể mở trực tiếp bằng Microsoft Excel.
-
-## 8. Docker
-
-```powershell
-Copy-Item .env.docker.example .env
-notepad .env
-docker compose up -d --build
-```
-
-Kiểm tra:
-
-```powershell
-docker compose ps
-docker compose logs -f backend
-```
-
-Dừng nhưng giữ dữ liệu:
-
-```powershell
-docker compose down
-```
-
-Xóa cả volume MySQL, chỉ dùng khi chấp nhận mất dữ liệu Docker:
-
-```powershell
-docker compose down -v
-```
-
-## 9. Lưu ý bảo mật
-
-- Không commit `BE/.env`, `FE/.env.local` hoặc `.env` Docker.
-- Không dùng tài khoản MySQL `root` cho backend.
-- Đổi mật khẩu và JWT secret trước khi deploy.
-- Không bật `ALLOW_DATABASE_SEED=true` trên production.
-
-Xem đánh giá chi tiết tại [CODE_AUDIT.md](./CODE_AUDIT.md).
-
-## 10. Kết quả kiểm tra
-
-Xem [VALIDATION.md](./VALIDATION.md) để biết các bước đã xác thực và phần cần chạy lại trên máy thật.
-
-
-## Cập nhật CRUD MySQL
-
-Bản này đã thay các thao tác quản trị từng lưu ở `localStorage` bằng API Prisma/MySQL thật. Xem chi tiết tại [`DATABASE_CRUD_FIX.md`](./DATABASE_CRUD_FIX.md).
-
-Sau khi cập nhật source:
-
-```powershell
-cd BE
-npx prisma generate
-npx prisma migrate deploy
-npm run dev
-```
-
-Mở terminal khác:
-
-```powershell
-cd FE
-npm run dev
-```
-
-Có thể chạy kiểm thử CRUD không phá dữ liệu:
-
-```powershell
-.\TEST_DATABASE_CRUD.ps1
-```
-
-## 11. Role Cán bộ lớp/Lớp trưởng
-
-Role `CLASS_LEADER` quản lý dữ liệu đúng lớp được phân công, theo dõi đăng ký, nhắc ngày công, xác nhận sơ bộ, gửi thông báo và xuất CSV. Role này không có quyền sửa ngày công.
-
-Áp dụng migration mới:
-
-```powershell
-cd BE
-npx prisma generate
-npx prisma migrate deploy
-```
-
-Sau đó Admin vào `/admin/class-leaders` để phân công một sinh viên đang có trong lớp. Không cần seed lại database hiện tại.
-
-Xem chi tiết tại [`ROLE2_CLASS_LEADER_AUDIT.md`](./ROLE2_CLASS_LEADER_AUDIT.md).
-
-Kết quả kiểm tra Role 2: [`ROLE2_VALIDATION.md`](./ROLE2_VALIDATION.md).
+- [Ma trận kiểm thử](./QA_TEST_MATRIX.md)
+- [Báo cáo rà soát dự án](./PROJECT_AUDIT_REPORT.md)

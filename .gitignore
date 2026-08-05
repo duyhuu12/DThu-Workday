@@ -1,15 +1,13 @@
-FE/node_modules/
-FE/.next/
-FE/out/
-FE/.env.local
-FE/*.tsbuildinfo
-
-BE/node_modules/
-BE/dist/
-BE/.env
-BE/*.tsbuildinfo
+node_modules/
+.next/
+dist/
+out/
+backups/
+*.tsbuildinfo
 
 .env
+.env.*
+!.env.example
 *.log
 .DS_Store
 .vscode/

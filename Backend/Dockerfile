@@ -16,6 +16,9 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+# Keep the TypeScript source available for `prisma db seed`, which imports the
+# shared environment and Prisma configuration at runtime via tsx.
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/dist ./dist
 EXPOSE 8080
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
